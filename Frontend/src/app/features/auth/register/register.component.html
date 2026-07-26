@@ -1,0 +1,104 @@
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh; padding: 2rem;">
+  <div style="max-width: 450px; width: 100%;">
+    
+    <div class="glass-card animate-slide-up">
+      <h2 style="text-align: center; margin-bottom: 2rem; font-size: 1.75rem;">Create an Account</h2>
+      
+      <!-- Error Message Box -->
+      @if (errorMessage) {
+        <div style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--error); padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px;">
+          <p style="color: var(--error); font-size: 0.9rem; margin: 0;">{{ errorMessage }}</p>
+        </div>
+      }
+
+      <!-- Success Message Box -->
+      @if (successMessage) {
+        <div style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--success); padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px;">
+          <p style="color: var(--success); font-size: 0.9rem; margin: 0;">{{ successMessage }}</p>
+        </div>
+      }
+
+      @if (!successMessage) {
+        <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+          
+          <!-- Full Name Field -->
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input 
+              type="text" 
+              formControlName="fullName" 
+              class="form-input" 
+              [class.is-invalid]="registerForm.get('fullName')?.invalid && registerForm.get('fullName')?.touched"
+              placeholder="Enter your full name">
+            
+            @if (registerForm.get('fullName')?.invalid && registerForm.get('fullName')?.touched) {
+              <div class="error-text">
+                @if (registerForm.get('fullName')?.hasError('required')) {
+                  <span>Full Name is required.</span>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Email Field -->
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input 
+              type="email" 
+              formControlName="email" 
+              class="form-input" 
+              [class.is-invalid]="registerForm.get('email')?.invalid && registerForm.get('email')?.touched"
+              placeholder="Enter your email">
+            
+            @if (registerForm.get('email')?.invalid && registerForm.get('email')?.touched) {
+              <div class="error-text">
+                @if (registerForm.get('email')?.hasError('required')) {
+                  <span>Email is required.</span>
+                }
+                @if (registerForm.get('email')?.hasError('email')) {
+                  <span>Please enter a valid email.</span>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Password Field -->
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input 
+              type="password" 
+              formControlName="password" 
+              class="form-input"
+              [class.is-invalid]="registerForm.get('password')?.invalid && registerForm.get('password')?.touched"
+              placeholder="••••••••">
+            
+            @if (registerForm.get('password')?.invalid && registerForm.get('password')?.touched) {
+              <div class="error-text">
+                @if (registerForm.get('password')?.hasError('required')) {
+                  <span>Password is required.</span>
+                }
+                @if (registerForm.get('password')?.hasError('minlength')) {
+                  <span>Password must be at least 6 characters.</span>
+                }
+              </div>
+            }
+          </div>
+
+          <button type="submit" class="btn-primary" style="margin-top: 1rem;" [disabled]="registerForm.invalid || isLoading">
+            @if (isLoading) {
+              Creating account...
+            } @else {
+              Create Account
+            }
+          </button>
+
+        </form>
+        
+        <p style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
+          Already have an account? <a routerLink="/login" style="font-weight: 600;">Sign in</a>
+        </p>
+      }
+
+    </div>
+  </div>
+</div>
