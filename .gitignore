@@ -1,0 +1,22 @@
+# .NET / Visual Studio
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.dll
+*.pdb
+*.exe
+*.cache
+*.deps.json
+*.runtimeconfig.json
+*.sourcelink.json
+
+# Angular / Node
+node_modules/
+dist/
+.angular/
+*.log
+.env
+.DS_Store

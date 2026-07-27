@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { RegisterRequest } from '../../../core/models/models';
 
 @Component({
   selector: 'app-register',
@@ -31,7 +32,9 @@ export class RegisterComponent {
     this.errorMessage = '';
     this.successMessage = '';
 
-    this.authService.register(this.registerForm.value).subscribe({
+    const payload = this.registerForm.value as RegisterRequest;
+
+    this.authService.register(payload).subscribe({
       next: (res) => {
         this.successMessage = 'Registration successful! Redirecting to login...';
         

@@ -1,21 +1,21 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using MovieTicketing.Application.Interfaces;
 using MovieTicketing.Domain.Entities;
-
-namespace MovieTicketing.Infrastructure.Data;
-
 public class AppDbContext
     : IdentityDbContext<ApplicationUser, IdentityRole, string,
         IdentityUserClaim<string>,
         IdentityUserRole<string>,
         IdentityUserLogin<string>,
         IdentityRoleClaim<string>,
-        IdentityUserToken<string>>
+        IdentityUserToken<string>>, IAppDbContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
     }
+
+    public DbSet<Movie> Movies { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

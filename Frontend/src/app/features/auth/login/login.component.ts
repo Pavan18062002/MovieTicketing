@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { LoginRequest } from '../../../core/models/models';
 
 @Component({
   selector: 'app-login',
@@ -10,7 +11,6 @@ import { AuthService } from '../../../core/services/auth.service';
   templateUrl: './login.component.html'
 })
 export class LoginComponent {
-  // Using modern 'inject' instead of a constructor (cleaner, more human-readable)
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
@@ -29,9 +29,13 @@ export class LoginComponent {
     this.isLoading = true;
     this.errorMessage = '';
 
-    this.authService.login(this.loginForm.value).subscribe({
+    const payload = this.loginForm.value as LoginRequest;
+
+    this.authService.login(payload).subscribe({
       next: (res) => {
-        this.authService.saveToken(res.data.token);
+        if (res.data?.token) {
+          this.authService.saveToken(res.data.token);
+        }
         this.router.navigate(['/']);
       },
       error: (err) => {
