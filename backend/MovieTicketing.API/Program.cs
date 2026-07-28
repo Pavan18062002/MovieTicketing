@@ -46,8 +46,11 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddScoped<MovieTicketing.Application.Interfaces.Repositories.IUnitOfWork, MovieTicketing.Infrastructure.Repositories.UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMovieService, MovieService>();
+builder.Services.AddScoped<IScreenService, ScreenService>();
+builder.Services.AddScoped<IShowService, ShowService>();
 
 // Add support for controllers and override default validation response
 builder.Services.AddControllers()
@@ -97,6 +100,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseMiddleware<MovieTicketing.API.Middleware.ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 
