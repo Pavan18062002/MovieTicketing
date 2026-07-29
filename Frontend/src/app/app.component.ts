@@ -6,9 +6,18 @@ import { NavbarComponent } from './shared/navbar/navbar.component';
   selector: 'app-root',
   standalone: true,
   imports: [RouterOutlet, NavbarComponent],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+  template: `
+    <app-navbar />
+    <main class="main-content">
+      <router-outlet />
+    </main>
+  `,
+  styles: [`
+    .main-content {
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+  `]
 })
-export class AppComponent {
-  title = 'movie-ticketing-web';
-}
+export class AppComponent {}

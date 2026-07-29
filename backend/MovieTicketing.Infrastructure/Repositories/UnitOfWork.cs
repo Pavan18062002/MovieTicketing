@@ -14,6 +14,7 @@ public class UnitOfWork : IUnitOfWork
     public IMovieRepository Movies { get; }
     public IShowRepository Shows { get; }
     public IScreenRepository Screens { get; }
+    public IConcessionRepository Concessions { get; }
     public IBookingRepository Bookings { get; }
 
     public UnitOfWork(AppDbContext context)
@@ -22,6 +23,7 @@ public class UnitOfWork : IUnitOfWork
         Movies = new MovieRepository(_context);
         Shows = new ShowRepository(_context);
         Screens = new ScreenRepository(_context);
+        Concessions = new ConcessionRepository(_context);
         Bookings = new BookingRepository(_context);
     }
 

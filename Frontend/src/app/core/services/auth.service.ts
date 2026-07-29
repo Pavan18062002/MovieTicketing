@@ -1,55 +1,58 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Router } from '@angular/router';
+import { Observable, tap } from 'rxjs';
+import { ApiResponse, AuthResponse, LoginRequest, RegisterRequest } from '../models/models';
+import { environment } from '../../../environments/environment';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class AuthService {
-  //Backend URL 
-  private apiUrl = 'http://localhost:5172/api/auth';
+  private readonly TOKEN_KEY = 'mt_token';
+  private readonly USER_KEY  = 'mt_user';
 
-  constructor(private http: HttpClient) { }
+  // Angular Signals — reactive state without a separate state library
+  private _user = signal<AuthResponse | null>(this.loadUser());
+  readonly user       = this._user.asReadonly();
+  readonly isLoggedIn = computed(() => !!this._user());
+  readonly isAdmin    = computed(() => this._user()?.role === 'Admin');
 
-  /**
-   * Sends the user's registration details to the backend.
-   */
-  register(userData: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/register`, userData);
+  constructor(private http: HttpClient, private router: Router) {}
+
+  register(payload: RegisterRequest): Observable<ApiResponse<AuthResponse>> {
+    return this.http
+      .post<ApiResponse<AuthResponse>>(`${environment.apiUrl}/auth/register`, payload)
+      .pipe(tap(res => { if (res.success) this.persist(res.data); }));
   }
 
-  /**
-   * Sends the user's login details and expects a JWT token in return.
-   */
-  login(credentials: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/login`, credentials);
+  login(payload: LoginRequest): Observable<ApiResponse<AuthResponse>> {
+    return this.http
+      .post<ApiResponse<AuthResponse>>(`${environment.apiUrl}/auth/login`, payload)
+      .pipe(tap(res => { if (res.success) this.persist(res.data); }));
   }
 
-  /**
-   * Saves the JWT token to the browser's local storage.
-   */
-  saveToken(token: string) {
-    localStorage.setItem('token', token);
+  logout(): void {
+    localStorage.removeItem(this.TOKEN_KEY);
+    localStorage.removeItem(this.USER_KEY);
+    this._user.set(null);
+    this.router.navigate(['/auth/login']);
   }
 
-  /**
-   * Retrieves the JWT token from local storage.
-   */
   getToken(): string | null {
-    return localStorage.getItem('token');
+    return localStorage.getItem(this.TOKEN_KEY);
   }
 
-  /**
-   * Checks if the user is currently logged in.
-   */
-  isLoggedIn(): boolean {
-    return !!this.getToken();
+  private persist(data: AuthResponse): void {
+    localStorage.setItem(this.TOKEN_KEY, data.token);
+    localStorage.setItem(this.USER_KEY, JSON.stringify(data));
+    this._user.set(data);
   }
 
-  /**
-   * Logs the user out by deleting the token.
-   */
-  logout() {
-    localStorage.removeItem('token');
+  private loadUser(): AuthResponse | null {
+    try {
+      const raw = localStorage.getItem(this.USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   }
 }

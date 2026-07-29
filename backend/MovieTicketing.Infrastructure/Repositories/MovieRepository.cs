@@ -26,7 +26,7 @@ public class MovieRepository : GenericRepository<Movie>, IMovieRepository
         return await _dbSet
             .AsNoTracking()
             .Include(m => m.Shows)
-            .Where(m => m.IsActive && m.Shows.Any(s => s.IsActive && s.ShowTime > now))
+            .Where(m => m.IsActive)
             .OrderByDescending(m => m.CreatedAt)
             .ToListAsync();
     }

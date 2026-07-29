@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using MovieTicketing.Application.Interfaces;
 using MovieTicketing.Domain.Entities;
+using MovieTicketing.Domain.Enums;
 public class AppDbContext
     : IdentityDbContext<ApplicationUser, IdentityRole, string,
         IdentityUserClaim<string>,
@@ -19,6 +20,7 @@ public class AppDbContext
     public DbSet<Screen> Screens { get; set; }
     public DbSet<Seat> Seats { get; set; }
     public DbSet<Show> Shows { get; set; }
+    public DbSet<ConcessionItem> ConcessionItems { get; set; }
     public DbSet<Booking> Bookings { get; set; }
     public DbSet<BookingSeat> BookingSeats { get; set; }
 
@@ -65,6 +67,14 @@ public class AppDbContext
         {
             e.Property(s => s.BaseTicketPrice).HasColumnType("decimal(18,2)");
             e.HasIndex(s => new { s.ScreenId, s.ShowTime });
+        });
+
+        // ── ConcessionItem ─────────────────────────────────────────────────
+        builder.Entity<ConcessionItem>(e =>
+        {
+            e.Property(c => c.ItemName).HasMaxLength(100).IsRequired();
+            e.Property(c => c.ItemSize).HasMaxLength(20);
+            e.Property(c => c.Price).HasColumnType("decimal(18,2)");
         });
 
         // ── Booking ────────────────────────────────────────────────────────

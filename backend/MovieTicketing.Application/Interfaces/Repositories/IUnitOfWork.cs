@@ -8,6 +8,7 @@ public interface IUnitOfWork : IDisposable
     IMovieRepository Movies { get; }
     IShowRepository Shows { get; }
     IScreenRepository Screens { get; }
+    IConcessionRepository Concessions { get; }
     IBookingRepository Bookings { get; }
 
     Task<int> SaveChangesAsync();

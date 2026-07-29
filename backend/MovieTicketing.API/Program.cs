@@ -51,6 +51,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IMovieService, MovieService>();
 builder.Services.AddScoped<IScreenService, ScreenService>();
 builder.Services.AddScoped<IShowService, ShowService>();
+builder.Services.AddScoped<IConcessionService, ConcessionService>();
 
 // Add support for controllers and override default validation response
 builder.Services.AddControllers()

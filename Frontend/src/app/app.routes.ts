@@ -1,11 +1,30 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './features/auth/login/login.component';
-import { RegisterComponent } from './features/auth/register/register.component';
-import { MovieListComponent } from './features/movies/movie-list/movie-list.component';
+import { authGuard, adminGuard, guestGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
-  { path: '', component: MovieListComponent },
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
-  { path: '**', redirectTo: '' }
+  // Default: redirect to movies homepage
+  { path: '', redirectTo: 'movies', pathMatch: 'full' },
+
+  // Auth routes — only for guests (logged-in users are redirected away)
+  {
+    path: 'auth',
+    canActivate: [guestGuard],
+    loadChildren: () => import('./features/auth/auth.routes').then(m => m.AUTH_ROUTES)
+  },
+
+  // Public movie catalog — no auth required
+  {
+    path: 'movies',
+    loadChildren: () => import('./features/movies/movies.routes').then(m => m.MOVIES_ROUTES)
+  },
+
+  // Admin section — requires login AND Admin role
+  {
+    path: 'admin',
+    canActivate: [authGuard, adminGuard],
+    loadChildren: () => import('./features/admin/admin.routes').then(m => m.ADMIN_ROUTES)
+  },
+
+  // Catch-all: unknown URLs go to movies
+  { path: '**', redirectTo: 'movies' }
 ];
