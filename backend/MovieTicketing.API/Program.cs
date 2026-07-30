@@ -2,9 +2,11 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using MovieTicketing.Infrastructure.Data;
 using MovieTicketing.Application.Services;
 using MovieTicketing.Application.Interfaces;
+using MovieTicketing.API.Swagger;
 using MovieTicketing.Domain.Entities;
 using System.Text;
 
@@ -69,7 +71,26 @@ builder.Services.AddControllers()
         };
     });
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "MovieTicketing.API",
+        Version = "v1"
+    });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Enter: Bearer {your JWT token}"
+    });
+
+    options.OperationFilter<AuthorizeCheckOperationFilter>();
+});
 
 // Configure CORS to allow our Angular frontend
 builder.Services.AddCors(options =>

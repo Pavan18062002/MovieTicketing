@@ -28,10 +28,12 @@ public static class DbSeeder
         }
 
         // 3. Seed Default Admin
-        const string adminEmail = "pavanadmin@cinebook.com";
-        if (await userManager.FindByEmailAsync(adminEmail) == null)
+        const string adminEmail = "pavanadmin@cinemate.com";
+        var admin = await userManager.FindByEmailAsync(adminEmail);
+
+        if (admin == null)
         {
-            var admin = new ApplicationUser
+            admin = new ApplicationUser
             {
                 UserName = adminEmail,
                 Email = adminEmail,
@@ -41,6 +43,13 @@ public static class DbSeeder
             };
             var result = await userManager.CreateAsync(admin, "Pavanadmin@123");
             if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(admin, "Admin");
+            }
+        }
+        else
+        {
+            if (!await userManager.IsInRoleAsync(admin, "Admin"))
             {
                 await userManager.AddToRoleAsync(admin, "Admin");
             }
