@@ -1,0 +1,112 @@
+<div class="page-header">
+      <h1>Manage Movies</h1>
+      @if (editingId()) {
+        <button class="btn-add-new" (click)="cancelEdit()">
+          + Add New Movie
+        </button>
+      }
+    </div>
+
+    <mat-card class="form-card">
+      <mat-card-header>
+        <mat-card-title>{{ editingId() ? 'Edit Movie' : 'Add New Movie' }}</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Title</mat-label>
+            <input matInput formControlName="title">
+            @if (form.get('title')?.hasError('required')) { <mat-error>Required</mat-error> }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Genre</mat-label>
+            <input matInput formControlName="genre">
+            @if (form.get('genre')?.hasError('required')) { <mat-error>Required</mat-error> }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Duration (minutes)</mat-label>
+            <input matInput type="number" formControlName="durationMinutes">
+            @if (form.get('durationMinutes')?.hasError('required')) { <mat-error>Required</mat-error> }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Poster URL</mat-label>
+            <input matInput formControlName="posterUrl">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="span-full">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="3"></textarea>
+            @if (form.get('description')?.hasError('required')) { <mat-error>Required</mat-error> }
+          </mat-form-field>
+
+          @if (editingId()) {
+            <div class="span-full toggle-row">
+              <mat-slide-toggle formControlName="isActive" color="primary">
+                Movie is Active (visible on homepage)
+              </mat-slide-toggle>
+            </div>
+          }
+
+          <div class="span-full actions-row">
+            <button mat-raised-button color="primary" type="submit" [disabled]="saving()">
+              @if (saving()) { <mat-spinner diameter="18" /> }
+              @else { {{ editingId() ? 'Save Changes' : 'Add Movie' }} }
+            </button>
+            @if (editingId()) {
+              <button mat-button type="button" (click)="cancelEdit()">Cancel</button>
+            }
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    @if (loading()) {
+      <div class="center"><mat-spinner /></div>
+    } @else {
+      <mat-card>
+        <table mat-table [dataSource]="movies()" class="full-width">
+          <ng-container matColumnDef="title">
+            <th mat-header-cell *matHeaderCellDef>Title</th>
+            <td mat-cell *matCellDef="let m">{{ m.title }}</td>
+          </ng-container>
+          <ng-container matColumnDef="genre">
+            <th mat-header-cell *matHeaderCellDef>Genre</th>
+            <td mat-cell *matCellDef="let m">{{ m.genre }}</td>
+          </ng-container>
+          <ng-container matColumnDef="duration">
+            <th mat-header-cell *matHeaderCellDef>Duration</th>
+            <td mat-cell *matCellDef="let m">{{ m.durationMinutes }} min</td>
+          </ng-container>
+          <ng-container matColumnDef="shows">
+            <th mat-header-cell *matHeaderCellDef>Shows</th>
+            <td mat-cell *matCellDef="let m">{{ m.showCount }}</td>
+          </ng-container>
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Active</th>
+            <td mat-cell *matCellDef="let m">
+              <mat-slide-toggle [checked]="m.isActive"
+                (change)="toggleActive(m, $event.checked)">
+              </mat-slide-toggle>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let m">
+              <button mat-icon-button color="primary" (click)="startEdit(m)" title="Edit movie">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button color="warn" (click)="deleteMovie(m.id)" title="Soft delete">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="cols"></tr>
+          <tr mat-row *matRowDef="let row; columns: cols;"
+              [class.inactive-row]="!row.isActive"></tr>
+        </table>
+      </mat-card>
+    }

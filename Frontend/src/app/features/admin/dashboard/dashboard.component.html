@@ -1,0 +1,12 @@
+<h1>Admin Dashboard</h1>
+    <div class="dashboard-grid">
+      @for (item of items; track item.label) {
+        <mat-card class="dash-card" [routerLink]="item.route">
+          <mat-card-content>
+            <mat-icon class="dash-icon">{{ item.icon }}</mat-icon>
+            <h2>{{ item.label }}</h2>
+            <p>{{ item.desc }}</p>
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>

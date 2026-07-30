@@ -35,20 +35,19 @@ public class AuthService : IAuthService
 
         var user = new ApplicationUser
         {
-            FullName = dto.FullName,
+            UserName = dto.Email,
             Email = dto.Email,
-            UserName = dto.Email
+            FullName = dto.FullName,
+            EmailConfirmed = true,
+            CreatedAt = DateTime.UtcNow
         };
 
         var result = await _userManager.CreateAsync(user, dto.Password);
         if (!result.Succeeded)
-            return ApiResponse<AuthResponseDto>.Fail(result.Errors.Select(e => e.Description).ToList());
+            return ApiResponse<AuthResponseDto>.Fail(
+                result.Errors.Select(e => e.Description).ToList());
 
-        var role = "EndUser";
-        if (!await _roleManager.RoleExistsAsync(role))
-            await _roleManager.CreateAsync(new IdentityRole(role));
-
-        await _userManager.AddToRoleAsync(user, role);
+        await _userManager.AddToRoleAsync(user, "EndUser");
 
         var tokenDto = await GenerateJwtTokenAsync(user);
         return ApiResponse<AuthResponseDto>.Ok(tokenDto, "Registration successful.");

@@ -1,0 +1,122 @@
+<div class="page-header">
+      <h1>Manage Concessions</h1>
+      @if (editingId()) {
+        <button class="btn-add-new" (click)="cancelEdit()">
+          + Add New Item
+        </button>
+      }
+    </div>
+
+    <mat-card class="form-card">
+      <mat-card-header>
+        <mat-card-title>{{ editingId() ? 'Edit Item' : 'Add New Item' }}</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Item Name</mat-label>
+            <input matInput formControlName="itemName">
+            @if (form.get('itemName')?.hasError('required')) { <mat-error>Required</mat-error> }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Size/Type</mat-label>
+            <input matInput formControlName="itemSize" placeholder="e.g. Large, 500ml">
+            @if (form.get('itemSize')?.hasError('required')) { <mat-error>Required</mat-error> }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Category</mat-label>
+            <mat-select formControlName="category">
+              <!-- Assuming 0: Popcorn, 1: ColdDrink, 2: Snack, 3: Combo based on backend Enum -->
+              <mat-option [value]="0">Popcorn</mat-option>
+              <mat-option [value]="1">Cold Drink</mat-option>
+              <mat-option [value]="2">Snack</mat-option>
+              <mat-option [value]="3">Combo</mat-option>
+            </mat-select>
+            @if (form.get('category')?.hasError('required')) { <mat-error>Required</mat-error> }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Price (₹)</mat-label>
+            <input matInput type="number" formControlName="price">
+            @if (form.get('price')?.hasError('required')) { <mat-error>Required</mat-error> }
+            @if (form.get('price')?.hasError('min')) { <mat-error>Must be > 0</mat-error> }
+          </mat-form-field>
+
+          @if (!editingId()) {
+            <mat-form-field appearance="outline" class="span-full">
+              <mat-label>Initial Stock Count</mat-label>
+              <input matInput type="number" formControlName="stockCount">
+              <mat-hint>Can be updated later via Quick Actions</mat-hint>
+              @if (form.get('stockCount')?.hasError('required')) { <mat-error>Required</mat-error> }
+              @if (form.get('stockCount')?.hasError('min')) { <mat-error>Cannot be negative</mat-error> }
+            </mat-form-field>
+          }
+
+          <div class="span-full actions-row">
+            <button mat-raised-button color="primary" type="submit" [disabled]="saving()">
+              @if (saving()) { <mat-spinner diameter="18" /> }
+              @else { {{ editingId() ? 'Save Changes' : 'Add Item' }} }
+            </button>
+            @if (editingId()) {
+              <button mat-button type="button" (click)="cancelEdit()">Cancel</button>
+            }
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    @if (loading()) {
+      <div class="center"><mat-spinner /></div>
+    } @else {
+      <mat-card>
+        <table mat-table [dataSource]="items()" class="full-width">
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Item Name</th>
+            <td mat-cell *matCellDef="let c">
+              <div class="item-name">{{ c.itemName }}</div>
+              <div class="item-cat">{{ c.categoryName }}</div>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="size">
+            <th mat-header-cell *matHeaderCellDef>Size</th>
+            <td mat-cell *matCellDef="let c">{{ c.itemSize }}</td>
+          </ng-container>
+          <ng-container matColumnDef="price">
+            <th mat-header-cell *matHeaderCellDef>Price</th>
+            <td mat-cell *matCellDef="let c">₹{{ c.price }}</td>
+          </ng-container>
+          <ng-container matColumnDef="stock">
+            <th mat-header-cell *matHeaderCellDef>Stock</th>
+            <td mat-cell *matCellDef="let c">
+              <span class="stock-badge" [class.low]="c.isLowStock" [class.out]="c.stockCount === 0">
+                {{ c.stockCount }}
+                @if (c.stockCount === 0) {
+                  (Out)
+                } @else if (c.isLowStock) {
+                  (Low)
+                }
+              </span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let c">
+              <button mat-icon-button color="primary" (click)="openStock(c)" title="Update stock">
+                <mat-icon>inventory</mat-icon>
+              </button>
+              <button mat-icon-button color="primary" (click)="startEdit(c)" title="Edit details">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button color="warn" (click)="deleteItem(c.id)" title="Delete">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="cols"></tr>
+          <tr mat-row *matRowDef="let row; columns: cols;" [class.out-row]="row.stockCount === 0"></tr>
+        </table>
+      </mat-card>
+    }
