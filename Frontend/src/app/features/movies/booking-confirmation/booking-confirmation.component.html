@@ -1,0 +1,77 @@
+@if (loading()) {
+  <div class="spinner-wrap"><mat-spinner diameter="52" /></div>
+} @else if (error()) {
+  <div class="error-state">
+    <mat-icon>error_outline</mat-icon>
+    <p>{{ error() }}</p>
+    <a routerLink="/movies" class="btn-home">Back to Movies</a>
+  </div>
+} @else if (booking()) {
+
+  <div class="success-banner">
+    <div class="check-circle">
+      <mat-icon>check</mat-icon>
+    </div>
+    <h1>Booking Confirmed!</h1>
+    <p>Your tickets are booked. Enjoy the show!</p>
+    <div class="ref-badge">{{ booking()!.bookingReference }}</div>
+  </div>
+
+  <div class="receipt">
+
+    <div class="receipt-header">
+      <div class="movie-info">
+        <h2>{{ booking()!.movieTitle }}</h2>
+        <div class="meta-row">
+          <span><mat-icon class="sm-icon">videocam</mat-icon> {{ booking()!.screenName }}</span>
+          <span><mat-icon class="sm-icon">schedule</mat-icon> {{ booking()!.showTime | date:'EEE, dd MMM yyyy h:mm a' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="receipt-section">
+      <h3>Seats</h3>
+      <div class="seats-list">
+        @for (seat of booking()!.seats; track seat.seatId) {
+          <div class="seat-item">
+            <span class="seat-num">{{ seat.seatNumber }}</span>
+            <span class="seat-type" [class]="'type-' + seat.seatType">{{ seat.seatTypeName }}</span>
+            <span class="seat-price">₹{{ seat.price | number:'1.2-2' }}</span>
+          </div>
+        }
+      </div>
+      <div class="section-total">
+        <span>Seats subtotal</span>
+        <span>₹{{ booking()!.ticketsTotal | number:'1.2-2' }}</span>
+      </div>
+    </div>
+
+    @if (booking()!.concessions.length > 0) {
+      <div class="receipt-section">
+        <h3>Food & Beverages</h3>
+        @for (item of booking()!.concessions; track item.concessionItemId) {
+          <div class="concession-item">
+            <span>{{ item.itemName }} {{ item.itemSize }} × {{ item.quantity }}</span>
+            <span>₹{{ item.subtotal | number:'1.2-2' }}</span>
+          </div>
+        }
+        <div class="section-total">
+          <span>F&B subtotal</span>
+          <span>₹{{ booking()!.concessionsTotal | number:'1.2-2' }}</span>
+        </div>
+      </div>
+    }
+
+    <div class="grand-total">
+      <span>Total Paid</span>
+      <span>₹{{ booking()!.totalAmount | number:'1.2-2' }}</span>
+    </div>
+
+  </div>
+
+  <div class="actions">
+    <a routerLink="/movies" class="btn-home">
+      <mat-icon>home</mat-icon> Back to Movies
+    </a>
+  </div>
+}

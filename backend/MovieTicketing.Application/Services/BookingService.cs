@@ -1,0 +1,259 @@
+using MovieTicketing.Application.Common;
+using MovieTicketing.Application.DTOs.Bookings;
+using MovieTicketing.Application.Interfaces;
+using MovieTicketing.Application.Interfaces.Repositories;
+using MovieTicketing.Domain.Entities;
+using MovieTicketing.Domain.Enums;
+
+namespace MovieTicketing.Application.Services;
+
+public class BookingService : IBookingService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    public BookingService(IUnitOfWork unitOfWork)
+    {
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task<ApiResponse<BookingResponseDto>> CheckoutAsync(string userId, CheckoutRequestDto dto)
+    {
+
+        var show = await _unitOfWork.Shows.GetWithDetailsByIdAsync(dto.ShowId);
+        if (show == null || !show.IsActive)
+            return ApiResponse<BookingResponseDto>.Fail("Show not found or is no longer active.");
+
+        var screen = await _unitOfWork.Screens.GetWithSeatsByIdAsync(show.ScreenId);
+        if (screen == null)
+            return ApiResponse<BookingResponseDto>.Fail("Screen not found.");
+
+        // Verify all requested seats belong to this show's screen
+        var screenSeatIds = screen.Seats.Select(s => s.Id).ToHashSet();
+        var invalidSeats = dto.SeatIds.Where(id => !screenSeatIds.Contains(id)).ToList();
+        if (invalidSeats.Any())
+            return ApiResponse<BookingResponseDto>.Fail("One or more selected seats do not belong to this show's screen.");
+
+        var concessionItemIds = dto.ConcessionItems.Select(c => c.ConcessionItemId).ToList();
+        var concessionItems = new List<ConcessionItem>();
+
+        // ACID Transaction 
+        await using var transaction = await _unitOfWork.BeginTransactionAsync();
+        try
+        {
+            bool seatsAlreadyBooked = await _unitOfWork.Bookings.AreSeatsBookedForShowAsync(dto.ShowId, dto.SeatIds);
+            if (seatsAlreadyBooked)
+                return ApiResponse<BookingResponseDto>.Fail("One or more selected seats have already been booked. Please refresh and choose different seats.");
+
+            // Load concession items with fresh data inside the transaction
+            if (concessionItemIds.Any())
+            {
+                var allConcessions = await _unitOfWork.Concessions.GetAllAsync();
+                concessionItems = allConcessions
+                    .Where(c => concessionItemIds.Contains(c.Id)).ToList();
+
+                var missingIds = concessionItemIds.Except(concessionItems.Select(c => c.Id)).ToList();
+                if (missingIds.Any())
+                    return ApiResponse<BookingResponseDto>.Fail("One or more concession items were not found.");
+            }
+
+            // Check concession stock availability
+            foreach (var orderItem in dto.ConcessionItems)
+            {
+                var item = concessionItems.First(c => c.Id == orderItem.ConcessionItemId);
+                if (!item.IsAvailable)
+                    return ApiResponse<BookingResponseDto>.Fail($"'{item.ItemName} ({item.ItemSize})' is currently unavailable.");
+
+                if (item.StockCount < orderItem.Quantity)
+                    return ApiResponse<BookingResponseDto>.Fail($"Insufficient stock for '{item.ItemName} ({item.ItemSize})'. Requested: {orderItem.Quantity}, Available: {item.StockCount}.");
+            }
+
+            // Decrement concession stock
+            foreach (var orderItem in dto.ConcessionItems)
+            {
+                var item = concessionItems.First(c => c.Id == orderItem.ConcessionItemId);
+                item.StockCount -= orderItem.Quantity;
+                item.IsAvailable = item.StockCount > 0;
+                item.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.Concessions.Update(item);
+            }
+            //Calculate seat prices
+            var seatLookup = screen.Seats.ToDictionary(s => s.Id);
+            decimal ticketsTotal = 0m;
+            var bookingSeatEntities = new List<(int SeatId, decimal Price)>();
+
+            foreach (var seatId in dto.SeatIds)
+            {
+                var seat = seatLookup[seatId];
+                decimal multiplier = seat.SeatType switch
+                {
+                    SeatType.Premium => 1.3m,
+                    SeatType.VIP    => 1.6m,
+                    _               => 1.0m
+                };
+                decimal price = Math.Round(show.BaseTicketPrice * multiplier, 2);
+                ticketsTotal += price;
+                bookingSeatEntities.Add((seatId, price));
+            }
+
+            decimal concessionsTotal = dto.ConcessionItems.Sum(orderItem =>
+            {
+                var item = concessionItems.First(c => c.Id == orderItem.ConcessionItemId);
+                return item.Price * orderItem.Quantity;
+            });
+
+            var booking = new Booking
+            {
+                UserId = userId,
+                ShowId = dto.ShowId,
+                TotalAmount = ticketsTotal + concessionsTotal,
+                Status = BookingStatus.Confirmed,
+                BookedAt = DateTime.UtcNow,
+                BookingReference = GenerateBookingReference()
+            };
+
+            await _unitOfWork.Bookings.AddAsync(booking);
+            await _unitOfWork.SaveChangesAsync();
+
+            foreach (var (seatId, price) in bookingSeatEntities)
+            {
+                booking.BookingSeats.Add(new BookingSeat
+                {
+                    BookingId = booking.Id,
+                    SeatId = seatId,
+                    ShowId = dto.ShowId,
+                    Price = price
+                });
+            }
+
+            await _unitOfWork.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            var response = BuildBookingResponse(booking, show, seatLookup, dto.ConcessionItems, concessionItems, ticketsTotal, concessionsTotal);
+            return ApiResponse<BookingResponseDto>.Ok(response, "Booking confirmed successfully!");
+        }
+        catch (Exception)
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<ApiResponse<List<BookingResponseDto>>> GetUserBookingsAsync(string userId)
+    {
+        var bookings = await _unitOfWork.Bookings.GetByUserIdAsync(userId);
+        var result = bookings.Select(b => MapToSimpleDto(b)).ToList();
+        return ApiResponse<List<BookingResponseDto>>.Ok(result);
+    }
+
+    public async Task<ApiResponse<BookingResponseDto>> GetBookingByIdAsync(int bookingId, string userId)
+    {
+        var booking = await _unitOfWork.Bookings.GetWithDetailsByIdAsync(bookingId);
+        if (booking == null)
+            return ApiResponse<BookingResponseDto>.Fail("Booking not found.");
+
+        // Security: ensure the booking belongs to the requesting user
+        if (booking.UserId != userId)
+            return ApiResponse<BookingResponseDto>.Fail("Booking not found.");
+
+        return ApiResponse<BookingResponseDto>.Ok(MapToSimpleDto(booking));
+    }
+
+    // helpers
+
+    private static string GenerateBookingReference()
+    {
+        var date = DateTime.UtcNow.ToString("yyyyMMdd");
+        var random = Guid.NewGuid().ToString("N")[..6].ToUpper();
+        return $"BK-{date}-{random}";
+    }
+
+    private static BookingResponseDto BuildBookingResponse(
+        Booking booking,
+        Show show,
+        Dictionary<int, Seat> seatLookup,
+        List<CheckoutConcessionItemDto> orderedConcessions,
+        List<ConcessionItem> concessionItems,
+        decimal ticketsTotal,
+        decimal concessionsTotal)
+    {
+        var seats = booking.BookingSeats.Select(bs =>
+        {
+            var seat = seatLookup.GetValueOrDefault(bs.SeatId);
+            return new BookingSeatResponseDto
+            {
+                SeatId       = bs.SeatId,
+                SeatNumber   = seat?.SeatNumber ?? string.Empty,
+                SeatType     = seat?.SeatType ?? SeatType.Standard,
+                SeatTypeName = seat?.SeatType.ToString() ?? string.Empty,
+                Row          = seat?.Row ?? 0,
+                Column       = seat?.Column ?? 0,
+                Price        = bs.Price
+            };
+        }).ToList();
+
+        var concessions = orderedConcessions.Select(oc =>
+        {
+            var item = concessionItems.First(c => c.Id == oc.ConcessionItemId);
+            return new BookingConcessionResponseDto
+            {
+                ConcessionItemId = item.Id,
+                ItemName         = item.ItemName,
+                ItemSize         = item.ItemSize,
+                Quantity         = oc.Quantity,
+                UnitPrice        = item.Price,
+                Subtotal         = item.Price * oc.Quantity
+            };
+        }).ToList();
+
+        return new BookingResponseDto
+        {
+            Id = booking.Id,
+            BookingReference = booking.BookingReference,
+            ShowId = booking.ShowId,
+            MovieTitle = show.Movie?.Title ?? string.Empty,
+            PosterUrl = show.Movie?.PosterUrl ?? string.Empty,
+            ScreenName = show.Screen?.Name ?? string.Empty,
+            ShowTime = show.ShowTime,
+            Seats = seats,
+            Concessions = concessions,
+            TicketsTotal = ticketsTotal,
+            ConcessionsTotal = concessionsTotal,
+            TotalAmount = booking.TotalAmount,
+            Status = booking.Status,
+            StatusName = booking.Status.ToString(),
+            BookedAt = booking.BookedAt
+        };
+    }
+
+    private static BookingResponseDto MapToSimpleDto(Booking booking)
+    {
+        var seats = booking.BookingSeats.Select(bs => new BookingSeatResponseDto
+        {
+            SeatId       = bs.SeatId,
+            SeatNumber   = bs.Seat?.SeatNumber ?? string.Empty,
+            SeatType     = bs.Seat?.SeatType ?? SeatType.Standard,
+            SeatTypeName = bs.Seat?.SeatType.ToString() ?? string.Empty,
+            Row          = bs.Seat?.Row ?? 0,
+            Column       = bs.Seat?.Column ?? 0,
+            Price        = bs.Price
+        }).ToList();
+
+        return new BookingResponseDto
+        {
+            Id = booking.Id,
+            BookingReference = booking.BookingReference,
+            ShowId = booking.ShowId,
+            MovieTitle = booking.Show?.Movie?.Title ?? string.Empty,
+            PosterUrl = booking.Show?.Movie?.PosterUrl ?? string.Empty,
+            ScreenName = booking.Show?.Screen?.Name ?? string.Empty,
+            ShowTime = booking.Show?.ShowTime ?? default,
+            Seats = seats,
+            Concessions = new List<BookingConcessionResponseDto>(),
+            TicketsTotal = seats.Sum(s => s.Price),
+            ConcessionsTotal = 0,
+            TotalAmount = booking.TotalAmount,
+            Status = booking.Status,
+            StatusName = booking.Status.ToString(),
+            BookedAt = booking.BookedAt
+        };
+    }
+}

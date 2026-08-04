@@ -1,0 +1,97 @@
+@if (loading()) {
+      <div class="spinner-wrap"><mat-spinner diameter="52" /></div>
+    } @else {
+
+      <!-- Cinematic Header -->
+      @if (movieTitle()) {
+        <div class="hero">
+          <img class="hero-backdrop"
+               [src]="posterSrc()"
+               referrerpolicy="no-referrer"
+               aria-hidden="true">
+          <div class="hero-overlay"></div>
+          <div class="hero-content">
+            <img class="poster-thumb"
+                 [src]="posterSrc()"
+                 [alt]="movieTitle()"
+                 referrerpolicy="no-referrer"
+                 (error)="onImgError($event)">
+            <div class="meta">
+              <a routerLink="/movies" class="back-btn">
+                <mat-icon class="back-icon">arrow_back_ios</mat-icon> All Movies
+              </a>
+              <h1>{{ movieTitle() }}</h1>
+              <div class="badges">
+                <span class="badge-genre">{{ genre() }}</span>
+                <span class="badge-dur">
+                  <mat-icon class="sm-icon">schedule</mat-icon>
+                  {{ durationMinutes() }} min
+                </span>
+              </div>
+              <p class="desc">{{ description() }}</p>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Shows -->
+      <div class="shows-section">
+        <h2 class="section-title">
+          <mat-icon>local_movies</mat-icon>
+          Available Shows
+        </h2>
+
+        @if (shows().length === 0) {
+          <div class="empty-state">
+            <mat-icon class="empty-icon">event_busy</mat-icon>
+            <p>No upcoming shows for this movie.</p>
+            <a routerLink="/movies" class="btn-back">← Back to Movies</a>
+          </div>
+        } @else {
+          <div class="shows-grid">
+            @for (show of shows(); track show.id) {
+              <div class="show-card" [class.sold-out]="show.availableSeats === 0">
+                <div class="show-top">
+                  <div class="show-datetime">
+                    <span class="show-date">{{ show.showTime | date:'EEE, dd MMM yyyy' }}</span>
+                    <span class="show-time">{{ show.showTime | date:'h:mm a' }}</span>
+                  </div>
+                  <span class="show-price">₹{{ show.baseTicketPrice }}</span>
+                </div>
+
+                <div class="show-screen">
+                  <mat-icon class="sm-icon">videocam</mat-icon>
+                  {{ show.screenName }}
+                </div>
+
+                <div class="show-seats">
+                  <div class="seats-bar">
+                    <div class="seats-fill"
+                         [style.width.%]="(show.bookedSeats / show.totalSeats) * 100"
+                         [class.fill-warn]="(show.availableSeats / show.totalSeats) < 0.3"
+                         [class.fill-danger]="show.availableSeats === 0">
+                    </div>
+                  </div>
+                  <span class="seats-text">
+                    @if (show.availableSeats === 0) {
+                      <span class="label-danger">Sold Out</span>
+                    } @else if (show.availableSeats <= 10) {
+                      <span class="label-warn">⚡ Only {{ show.availableSeats }} left!</span>
+                    } @else {
+                      {{ show.availableSeats }} / {{ show.totalSeats }} seats available
+                    }
+                  </span>
+                </div>
+
+                <!-- Book Now button —— navigates to seat selection -->
+                @if (show.availableSeats === 0) {
+                  <button class="book-btn" disabled>Sold Out</button>
+                } @else {
+                  <a class="book-btn" [routerLink]="['/movies', movieId(), 'shows', show.id, 'seats']">Select Seats</a>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }

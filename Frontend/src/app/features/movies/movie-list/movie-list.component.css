@@ -1,0 +1,102 @@
+.banner {
+      background: linear-gradient(135deg, #37337b, #5c4199);
+      border-radius: 16px; padding: 40px; margin-bottom: 32px;
+      color: #fff; box-shadow: 0 10px 25px rgba(75, 69, 190, 0.2);
+      text-align: center;
+    }
+    .banner h1 { margin: 0 0 8px; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; }
+    .banner p { margin: 0 0 24px; color: #eef2ff; font-size: 1.1rem; }
+
+    .search-box {
+      display: flex; align-items: center; gap: 4px;
+      background: rgba(255,255,255,0.18); border: 1.5px solid rgba(255,255,255,0.3);
+      border-radius: 50px; padding: 4px 6px 4px 18px;
+      max-width: 540px; margin: 0 auto;
+      transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+    }
+    .search-box.focused {
+      border-color: rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.25);
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.15);
+    }
+    .s-icon { color: rgba(255,255,255,0.65); flex-shrink: 0; font-size: 20px !important; }
+    .s-input {
+      flex: 1; background: none; border: none; outline: none;
+      color: #fff; font-size: 1rem; padding: 11px 8px; font-family: inherit;
+    }
+    .s-input::placeholder { color: rgba(255,255,255,0.6); }
+    .s-clear {
+      background: rgba(255,255,255,0.2); border: none; cursor: pointer;
+      color: rgba(255,255,255,0.75); display: flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0; transition: all 0.18s;
+    }
+    .s-clear:hover { background: rgba(255,255,255,0.35); color: #fff; }
+
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; margin-bottom: 28px; flex-wrap: wrap;
+    }
+    .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill {
+      background: #fff; border: 1.5px solid #e2e8f0;
+      color: #64748b; padding: 7px 20px;
+      border-radius: 50px; font-size: 0.85rem; font-weight: 500;
+      cursor: pointer; transition: all 0.2s; font-family: inherit;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .pill:hover { border-color: #c7d2fe; color: #4f46e5; background: #eef2ff; }
+    .pill.on {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      border-color: transparent; color: #fff;
+      box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+    }
+    .count-label { color: #94a3b8; font-size: 0.85rem; }
+
+    .spinner-wrap { display: flex; justify-content: center; padding: 60px; }
+
+    .empty-state { text-align: center; padding: 80px 24px; }
+    .empty-icon { font-size: 64px !important; height: 64px !important; width: 64px !important; color: #cbd5e1; margin-bottom: 16px; }
+    .empty-state h3 { font-size: 1.25rem; color: #475569; margin: 0 0 8px; }
+    .empty-state p { color: #94a3b8; font-size: 1.1rem; margin-bottom: 24px; }
+
+    .movie-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 24px;
+    }
+
+    .movie-card {
+      cursor: pointer; text-decoration: none;
+      transition: transform 0.25s, box-shadow 0.25s;
+    }
+    .movie-card:hover { transform: translateY(-8px); }
+
+    .poster-wrap {
+      position: relative; border-radius: 12px; overflow: hidden;
+      aspect-ratio: 2 / 3; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      background: #f1f5f9; margin-bottom: 12px;
+    }
+    .poster-img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s; }
+    .movie-card:hover .poster-img { transform: scale(1.05); }
+
+    .hover-overlay {
+      position: absolute; inset: 0;
+      background: rgba(15, 23, 42, 0.7);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.25s;
+    }
+    .movie-card:hover .hover-overlay { opacity: 1; }
+
+    .btn-book {
+      background: var(--primary); color: #fff;
+      border: none; padding: 8px 16px; border-radius: 20px;
+      font-weight: 600; font-size: 0.9rem; font-family: inherit;
+      transform: translateY(10px); transition: transform 0.25s, background 0.2s;
+    }
+    .btn-book:hover { background: var(--primary-hover); }
+    .movie-card:hover .btn-book { transform: translateY(0); }
+
+    .movie-info { padding: 0 4px; }
+    .movie-info h3 { margin: 0 0 4px; font-size: 1.05rem; color: #1e293b; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .meta { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #64748b; }
+    .genre { background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
