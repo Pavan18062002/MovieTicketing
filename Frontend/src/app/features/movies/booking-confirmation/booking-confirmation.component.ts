@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,6 +20,10 @@ export class BookingConfirmationComponent implements OnInit {
   booking = signal<BookingResponse | null>(null);
   loading = signal(true);
   error   = signal('');
+
+  seatNumbers = computed(() =>
+    this.booking()?.seats.map(s => s.seatNumber).join(', ') ?? ''
+  );
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));

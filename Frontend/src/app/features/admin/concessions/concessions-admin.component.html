@@ -28,11 +28,11 @@
           <mat-form-field appearance="outline">
             <mat-label>Category</mat-label>
             <mat-select formControlName="category">
-              <!-- Assuming 0: Popcorn, 1: ColdDrink, 2: Snack, 3: Combo based on backend Enum -->
-              <mat-option [value]="0">Popcorn</mat-option>
-              <mat-option [value]="1">Cold Drink</mat-option>
-              <mat-option [value]="2">Snack</mat-option>
-              <mat-option [value]="3">Combo</mat-option>
+              <mat-option [value]="1">Popcorn</mat-option>
+              <mat-option [value]="2">Cold Drink</mat-option>
+              <mat-option [value]="3">Beverage</mat-option>
+              <mat-option [value]="4">Snack</mat-option>
+              <mat-option [value]="5">Combo</mat-option>
             </mat-select>
             @if (form.get('category')?.hasError('required')) { <mat-error>Required</mat-error> }
           </mat-form-field>

@@ -1,97 +1,135 @@
 @if (loading()) {
-      <div class="spinner-wrap"><mat-spinner diameter="52" /></div>
-    } @else {
+  <!-- Loading spinner while fetching movie and show details -->
+  <div class="spinner-wrap"><mat-spinner diameter="52" /></div>
+} @else {
 
-      <!-- Cinematic Header -->
-      @if (movieTitle()) {
-        <div class="hero">
-          <img class="hero-backdrop"
-               [src]="posterSrc()"
+  <div class="details-page-wrap">
+    
+    <!-- Top Action Bar -->
+    <div class="top-nav-bar">
+      <a routerLink="/movies" class="back-link-btn">
+        <mat-icon>arrow_back</mat-icon>
+      </a>
+    </div>
+
+    <div class="details-grid">
+      
+      <!-- LEFT COLUMN: Movie Poster & Metadata -->
+      <div class="movie-info-card">
+        <div class="poster-container">
+          <img [src]="posterSrc()"
+               [alt]="movieTitle()"
+               (error)="onImgError($event)"
                referrerpolicy="no-referrer"
-               aria-hidden="true">
-          <div class="hero-overlay"></div>
-          <div class="hero-content">
-            <img class="poster-thumb"
-                 [src]="posterSrc()"
-                 [alt]="movieTitle()"
-                 referrerpolicy="no-referrer"
-                 (error)="onImgError($event)">
-            <div class="meta">
-              <a routerLink="/movies" class="back-btn">
-                <mat-icon class="back-icon">arrow_back_ios</mat-icon> All Movies
-              </a>
-              <h1>{{ movieTitle() }}</h1>
-              <div class="badges">
-                <span class="badge-genre">{{ genre() }}</span>
-                <span class="badge-dur">
-                  <mat-icon class="sm-icon">schedule</mat-icon>
-                  {{ durationMinutes() }} min
-                </span>
-              </div>
-              <p class="desc">{{ description() }}</p>
-            </div>
-          </div>
+               class="details-poster-img">
         </div>
-      }
 
-      <!-- Shows -->
-      <div class="shows-section">
-        <h2 class="section-title">
-          <mat-icon>local_movies</mat-icon>
-          Available Shows
-        </h2>
-
-        @if (shows().length === 0) {
-          <div class="empty-state">
-            <mat-icon class="empty-icon">event_busy</mat-icon>
-            <p>No upcoming shows for this movie.</p>
-            <a routerLink="/movies" class="btn-back">← Back to Movies</a>
+        <div class="movie-meta-header">
+          <h1 class="movie-title">{{ movieTitle() }}</h1>
+          
+          <!-- Format & Genre Chips -->
+          <div class="meta-tags">
+            <span class="chip format-chip">2D</span>
+            @for (t of genreTags(); track t) {
+              <span class="chip">{{ t }}</span>
+            }
           </div>
-        } @else {
-          <div class="shows-grid">
-            @for (show of shows(); track show.id) {
-              <div class="show-card" [class.sold-out]="show.availableSeats === 0">
-                <div class="show-top">
-                  <div class="show-datetime">
-                    <span class="show-date">{{ show.showTime | date:'EEE, dd MMM yyyy' }}</span>
-                    <span class="show-time">{{ show.showTime | date:'h:mm a' }}</span>
-                  </div>
-                  <span class="show-price">₹{{ show.baseTicketPrice }}</span>
-                </div>
 
-                <div class="show-screen">
-                  <mat-icon class="sm-icon">videocam</mat-icon>
-                  {{ show.screenName }}
-                </div>
+          <!-- Duration & Rating Metadata -->
+          <div class="meta-stats">
+            <span><mat-icon class="stat-icon">schedule</mat-icon> {{ durationMinutes() }}m</span>
+            <span>•</span>
+            <span>English</span>
+            <span>•</span>
+            <span class="cert-badge">UA</span>
+          </div>
 
-                <div class="show-seats">
-                  <div class="seats-bar">
-                    <div class="seats-fill"
-                         [style.width.%]="(show.bookedSeats / show.totalSeats) * 100"
-                         [class.fill-warn]="(show.availableSeats / show.totalSeats) < 0.3"
-                         [class.fill-danger]="show.availableSeats === 0">
-                    </div>
-                  </div>
-                  <span class="seats-text">
-                    @if (show.availableSeats === 0) {
-                      <span class="label-danger">Sold Out</span>
-                    } @else if (show.availableSeats <= 10) {
-                      <span class="label-warn">⚡ Only {{ show.availableSeats }} left!</span>
-                    } @else {
-                      {{ show.availableSeats }} / {{ show.totalSeats }} seats available
-                    }
-                  </span>
-                </div>
+          <!-- Movie Synopsis -->
+          <p class="synopsis-text">
+            {{ description() || 'An action-packed cinematic spectacle following an unstoppable journey through high-stakes encounters and powerful alliances across the globe.' }}
+          </p>
+        </div>
+      </div>
 
-                <!-- Book Now button —— navigates to seat selection -->
-                @if (show.availableSeats === 0) {
-                  <button class="book-btn" disabled>Sold Out</button>
-                } @else {
-                  <a class="book-btn" [routerLink]="['/movies', movieId(), 'shows', show.id, 'seats']">Select Seats</a>
-                }
+      <!-- RIGHT COLUMN: Date & Showtime Selection -->
+      <div class="booking-selection-panel">
+        
+        <!-- 1. Date Selector Tabs (Next 7 Days) -->
+        <div class="selection-group">
+          <label class="group-title">Select Date</label>
+          <div class="date-tabs-row">
+            @for (tab of dateTabs(); track tab.dateStr; let idx = $index) {
+              <div class="date-tab-card"
+                   [class.active]="selectedDateIdx() === idx"
+                   (click)="selectDate(idx)">
+                <span class="tab-day">{{ tab.dayName }}</span>
+                <span class="tab-date">{{ tab.dateStr }}</span>
               </div>
             }
           </div>
+        </div>
+
+        <!-- 2. Showtime Options for Selected Date -->
+        <div class="selection-group">
+          <label class="group-title">Select Showtime</label>
+          
+          @if (filteredShows().length === 0) {
+            <!-- Empty state when no showtimes are scheduled on chosen date -->
+            <div class="no-shows-alert">
+              <mat-icon>event_busy</mat-icon>
+              <span>No showtimes scheduled for this date.</span>
+            </div>
+          } @else {
+            <div class="showtimes-grid">
+              @for (show of filteredShows(); track show.id) {
+                <button class="showtime-pill"
+                        [class.active]="selectedShowId() === show.id"
+                        [class.sold-out]="show.availableSeats === 0"
+                        [disabled]="show.availableSeats === 0"
+                        (click)="selectShow(show.id)">
+                  <span class="time-text">{{ show.showTime | date:'hh:mm a' }}</span>
+                  <span class="format-text">2D</span>
+                  @if (show.availableSeats === 0) {
+                    <span class="seat-badge-warn">Sold Out</span>
+                  } @else if (show.availableSeats <= 10) {
+                    <span class="seat-badge-warn">⚡ Only {{ show.availableSeats }} left</span>
+                  } @else {
+                    <span class="seat-count-sub">{{ show.availableSeats }}/{{ show.totalSeats }} seats</span>
+                  }
+                </button>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- 3. Screen Info & Seat Booking Button -->
+        @if (selectedShow()) {
+          <div class="theatre-card">
+            <div class="theatre-header">
+              <div>
+                <h4 class="theatre-name">CineMate Cinemas • {{ selectedShow()!.screenName }}</h4>
+                <p class="screen-sub">Showtime {{ selectedShow()!.showTime | date:'hh:mm a' }} • Base Ticket Price ₹{{ selectedShow()!.baseTicketPrice }}</p>
+              </div>
+            </div>
+
+            <div class="policies-row">
+              <span class="policy-chip highlight"><mat-icon class="p-icon">event_seat</mat-icon> {{ selectedShow()!.availableSeats }} / {{ selectedShow()!.totalSeats }} Seats Available</span>
+              <span class="policy-chip"><mat-icon class="p-icon">event_available</mat-icon> Cancellation Available</span>
+              <span class="policy-chip"><mat-icon class="p-icon">fastfood</mat-icon> Food & Beverages</span>
+            </div>
+
+            <button class="btn-primary select-seats-btn"
+                    [disabled]="selectedShow()!.availableSeats === 0"
+                    (click)="proceedToSeats()">
+              Select Seats
+            </button>
+          </div>
         }
+
       </div>
-    }
+
+    </div>
+
+  </div>
+
+}

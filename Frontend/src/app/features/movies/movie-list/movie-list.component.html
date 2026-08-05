@@ -1,69 +1,133 @@
-<div class="banner">
-      <h1>Welcome to CineMate</h1>
-      <p>Discover and book tickets for the most anticipated upcoming blockbusters</p>
-      
-      <div class="search-box" [class.focused]="focused">
-        <mat-icon class="s-icon">search</mat-icon>
-        <input class="s-input" placeholder="Search movies..."
-               [value]="searchText()"
-               (input)="onSearch($event)"
-               (focus)="focused = true"
-               (blur)="focused = false">
-        @if (searchText()) {
-          <button class="s-clear" (click)="clearSearch()" aria-label="Clear search">
-            <mat-icon>close</mat-icon>
+@if (loading()) {
+<!-- Loading spinner while fetching active movie catalog -->
+<div class="spinner-wrap"><mat-spinner diameter="52" /></div>
+} @else {
+
+<div class="home-page-wrap">
+
+  <!-- Seamless Integrated Hero Showcase Banner -->
+  @if (currentHero()) {
+  <section class="hero-card">
+
+    <div class="hero-bg" [style.background-image]="'url(' + currentHero()?.posterUrl + ')'"></div>
+    <div class="hero-gradient-overlay"></div>
+
+    <div class="hero-content">
+      <!-- Left Text Details -->
+      <div class="hero-text-col">
+        <span class="now-playing-tag">NOW PLAYING</span>
+        <h1 class="hero-title">{{ currentHero()?.title }}</h1>
+        <p class="hero-synopsis">
+          {{ currentHero()?.description || 'Experience the ultimate cinematic journey. Book your seats now for an
+          unforgettable experience on the big screen.' }}
+        </p>
+
+        <div class="hero-actions">
+          <button class="btn-primary book-now-btn" (click)="bookHero()">
+            Book Tickets
           </button>
+        </div>
+      </div>
+
+      <!-- Seamless Full-Height Character / Poster Image -->
+      <div class="hero-character-col">
+        <img [src]="currentHero()?.posterUrl" [alt]="currentHero()?.title" (error)="onImgError($event)"
+          class="hero-character-img">
+      </div>
+    </div>
+
+    <!-- Navigation Controls -->
+    @if (heroMovies().length > 1) {
+    <button class="hero-arrow prev" (click)="prevSlide()">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+
+    <button class="hero-arrow next" (click)="nextSlide()">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+
+    <div class="hero-dots">
+      @for (m of heroMovies(); track m.id; let idx = $index) {
+      <span class="dot" [class.active]="activeSlideIndex() === idx" (click)="setSlide(idx)"></span>
+      }
+    </div>
+    }
+
+  </section>
+  }
+
+  <!-- Search & Genre Filter Toolbar -->
+  <div class="catalog-container">
+
+    <div class="catalog-header">
+      <div class="title-row">
+        <h2>Explore Movies</h2>
+      </div>
+
+      <div class="filter-bar">
+        <!-- Search Input Bar -->
+        <div class="search-box" [class.focused]="focused">
+          <mat-icon class="s-icon">search</mat-icon>
+          <input type="text" class="s-input" placeholder="Search movies by title or keyword..." [value]="searchText()"
+            (focus)="focused = true" (blur)="focused = false" (input)="onSearch($event)">
+          @if (searchText()) {
+          <button class="s-clear" (click)="clearSearch()"><mat-icon>close</mat-icon></button>
+          }
+        </div>
+
+        <!-- Genre Filter Pills -->
+        @if (genres().length > 0) {
+        <div class="pills">
+          <button class="pill" [class.on]="activeGenre() === null" (click)="setGenre(null)">
+            All
+          </button>
+          @for (g of genres(); track g) {
+          <button class="pill" [class.on]="activeGenre() === g" (click)="setGenre(g)">
+            {{ g }}
+          </button>
+          }
+        </div>
         }
       </div>
     </div>
 
-    @if (loading()) {
-      <div class="spinner-wrap"><mat-spinner diameter="52" /></div>
+    <!-- Movies Grid -->
+    @if (filtered().length === 0) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">search_off</mat-icon>
+      <h3>No movies found</h3>
+      <p>We couldn't find any movies matching "{{ searchText() }}". Try searching for another title.</p>
+      <button class="btn-outline" (click)="clearSearch()">Reset Search</button>
+    </div>
     } @else {
-      <div class="toolbar">
-        <div class="pills">
-          <button class="pill" [class.on]="!activeGenre()" (click)="setGenre(null)">All</button>
-          @for (g of genres(); track g) {
-            <button class="pill" [class.on]="activeGenre() === g" (click)="setGenre(g)">{{ g }}</button>
-          }
-        </div>
-        <span class="count-label">
-          {{ filtered().length }} movie{{ filtered().length !== 1 ? 's' : '' }}
-        </span>
-      </div>
+    <div class="movie-grid">
+      @for (movie of filtered(); track movie.id) {
+      <div class="movie-card" [routerLink]="['/movies', movie.id, 'shows']">
 
-      @if (filtered().length === 0) {
-        <div class="empty-state">
-          <mat-icon class="empty-icon">movie_filter</mat-icon>
-          <h3>No movies found</h3>
-          <p>Try a different search or genre.</p>
-          @if (movies().length > 0) {
-            <button class="pill on" (click)="clearSearch()">Clear filters</button>
-          }
+        <div class="poster-wrap">
+          <img [src]="movie.posterUrl || 'https://placehold.co/400x600/181832/8b5cf6?text=No+Poster'"
+            [alt]="movie.title" (error)="onImgError($event)" referrerpolicy="no-referrer" class="poster-img">
+          <div class="card-overlay">
+            <button class="card-book-btn">Book Tickets</button>
+          </div>
         </div>
-      } @else {
-        <div class="movie-grid">
-          @for (movie of filtered(); track movie.id) {
-            <div class="movie-card" [routerLink]="['/movies', movie.id, 'shows']">
-              <div class="poster-wrap">
-                <img [src]="movie.posterUrl"
-                     [alt]="movie.title"
-                     (error)="onImgError($event)"
-                     referrerpolicy="no-referrer"
-                     class="poster-img">
-                <div class="hover-overlay">
-                  <button class="btn-book">View Shows</button>
-                </div>
-              </div>
-              <div class="movie-info">
-                <h3>{{ movie.title }}</h3>
-                <div class="meta">
-                  <span class="genre">{{ movie.genre }}</span>
-                  <span class="dur">{{ movie.durationMinutes }}m</span>
-                </div>
-              </div>
-            </div>
-          }
+
+        <div class="movie-details">
+          <h3 class="movie-title">{{ movie.title }}</h3>
+
+          <div class="movie-sub">
+            <span class="genre">{{ movie.genre || 'Action' }}</span>
+            <span class="duration">{{ movie.durationMinutes }} mins</span>
+          </div>
         </div>
+
+      </div>
       }
+    </div>
     }
+
+  </div>
+
+</div>
+
+}

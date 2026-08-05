@@ -6,5 +6,6 @@ public enum ConcessionCategory
     Popcorn = 1,
     ColdDrink = 2,
     Beverage = 3,
-    Snack = 4
+    Snack = 4,
+    Combo = 5
 }

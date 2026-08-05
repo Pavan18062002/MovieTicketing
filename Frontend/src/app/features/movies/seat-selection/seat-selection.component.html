@@ -1,180 +1,263 @@
 @if (loading()) {
+  <!-- Loading spinner while fetching show and seat details -->
   <div class="spinner-wrap"><mat-spinner diameter="52" /></div>
 } @else if (showData()) {
 
-  <div class="page-header">
-    <button class="back-btn" (click)="goBack()">
-      <mat-icon>arrow_back_ios</mat-icon>
-      @if (step() === 1) { Back to Shows }
-      @if (step() === 2) { Back to Seats }
-      @if (step() === 3) { Back to F&B }
-    </button>
+  <div class="seat-selection-page">
+    
+    <!-- Top Navigation & Step Header -->
+    <div class="top-nav-bar">
+      <button class="back-link-btn" (click)="goBack()">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1 class="page-title">
+        @if (step() === 1) { Select Seats }
+        @if (step() === 2) { Food & Beverages }
+        @if (step() === 3) { Payment }
+      </h1>
+      <div style="width: 42px;"></div>
+    </div>
 
-    <div class="show-info">
-      <h1>{{ showData()!.movieTitle }}</h1>
-      <div class="show-meta">
-        <span><mat-icon class="sm-icon">videocam</mat-icon> {{ showData()!.screenName }}</span>
-        <span><mat-icon class="sm-icon">schedule</mat-icon> {{ showData()!.showTime | date:'EEE dd MMM, h:mm a' }}</span>
+    <!-- STEP 1: Interactive Seat Matrix -->
+    @if (step() === 1) {
+      
+      <!-- Seat Status Legend -->
+      <div class="legend-bar">
+        <div class="legend-item"><span class="box-dot standard"></span> Standard</div>
+        <div class="legend-item"><span class="box-dot premium"></span> Premium</div>
+        <div class="legend-item"><span class="box-dot vip"></span> VIP</div>
+        <div class="legend-item"><span class="box-dot selected"></span> Selected</div>
+        <div class="legend-item"><span class="box-dot booked"></span> Booked</div>
       </div>
-    </div>
 
-    <div class="steps">
-      <span [class.active]="step() === 1" [class.done]="step() > 1">1. Seats</span>
-      <mat-icon class="step-arrow">chevron_right</mat-icon>
-      <span [class.active]="step() === 2" [class.done]="step() > 2">2. F&B</span>
-      <mat-icon class="step-arrow">chevron_right</mat-icon>
-      <span [class.active]="step() === 3">3. Confirm</span>
-    </div>
-  </div>
+      <!-- Screen Direction Curve -->
+      <div class="screen-container">
+        <div class="screen-curve"></div>
+        <span class="screen-label">SCREEN THIS WAY</span>
+      </div>
 
-  <!-- step 1: seat grid -->
-  @if (step() === 1) {
-    <div class="screen-label">
-      <div class="screen-bar"></div>
-      <span>SCREEN</span>
-    </div>
+      <!-- Seat Rows and Aisles -->
+      <div class="seat-matrix-wrapper">
+        @for (row of rowGroups(); track row.rowLabel) {
+          <div class="seat-row">
+            <span class="row-label">{{ row.rowLabel }}</span>
+            
+            <!-- Left Aisle Seats -->
+            <div class="aisle-group">
+              @for (seat of row.leftAisle; track seat.id) {
+                <button
+                  class="seat-box"
+                  [class]="seatTypeClass(seat)"
+                  [disabled]="seat.isBooked"
+                  [title]="seat.seatNumber + ' — ₹' + seat.price"
+                  (click)="toggleSeat(seat)">
+                  {{ seat.column + 1 }}
+                </button>
+              }
+            </div>
 
-    <div class="grid-wrap">
-      @for (row of seatGrid(); track $index) {
-        <div class="seat-row">
-          <span class="row-label">{{ $index + 1 }}</span>
-          @for (seat of row; track seat.id) {
-            <button
-              class="seat"
-              [class]="seatTypeClass(seat)"
-              [disabled]="seat.isBooked"
-              [title]="seat.seatNumber + ' — ' + seat.seatTypeName + ' ₹' + seat.price"
-              (click)="toggleSeat(seat)">
-              {{ seat.seatNumber }}
-            </button>
-          }
-        </div>
-      }
-    </div>
+            <!-- Center Aisle Seats -->
+            <div class="aisle-group">
+              @for (seat of row.centerAisle; track seat.id) {
+                <button
+                  class="seat-box"
+                  [class]="seatTypeClass(seat)"
+                  [disabled]="seat.isBooked"
+                  [title]="seat.seatNumber + ' — ₹' + seat.price"
+                  (click)="toggleSeat(seat)">
+                  {{ seat.column + 1 }}
+                </button>
+              }
+            </div>
 
-    <div class="legend">
-      <span class="legend-item"><span class="dot standard"></span> Standard</span>
-      <span class="legend-item"><span class="dot premium"></span> Premium (+30%)</span>
-      <span class="legend-item"><span class="dot vip"></span> VIP (+60%)</span>
-      <span class="legend-item"><span class="dot booked"></span> Booked</span>
-      <span class="legend-item"><span class="dot selected"></span> Selected</span>
-    </div>
+            <!-- Right Aisle Seats -->
+            <div class="aisle-group">
+              @for (seat of row.rightAisle; track seat.id) {
+                <button
+                  class="seat-box"
+                  [class]="seatTypeClass(seat)"
+                  [disabled]="seat.isBooked"
+                  [title]="seat.seatNumber + ' — ₹' + seat.price"
+                  (click)="toggleSeat(seat)">
+                  {{ seat.column + 1 }}
+                </button>
+              }
+            </div>
 
-    <div class="footer-bar">
-      <div class="selection-summary">
-        @if (selectedSeats().length === 0) {
-          <span class="hint">Select seats to continue</span>
-        } @else {
-          <span class="seat-count">{{ selectedSeats().length }} seat(s) selected</span>
-          <span class="total">₹{{ ticketsTotal() | number:'1.2-2' }}</span>
+            <span class="row-label">{{ row.rowLabel }}</span>
+          </div>
         }
       </div>
-      <button class="btn-proceed" [disabled]="selectedSeatIds().size === 0" (click)="proceedToFnb()">
-        Add Food & Drinks <mat-icon>arrow_forward</mat-icon>
-      </button>
-    </div>
-  }
 
-  <!-- step 2: concessions -->
-  @if (step() === 2) {
-    <div class="fnb-wrap">
-      <h2>Food & Beverages</h2>
-      <p class="fnb-sub">Optional — add snacks to your order</p>
-
-      @if (concessions().length === 0) {
-        <p class="empty-fnb">No concession items available right now.</p>
-      } @else {
-        <div class="concession-grid">
-          @for (item of concessions(); track item.id) {
-            <div class="concession-card">
-              <div class="item-info">
-                <span class="item-name">{{ item.itemName }}</span>
-                <span class="item-size">{{ item.itemSize }}</span>
-                <span class="item-price">₹{{ item.price }}</span>
-                @if (item.isLowStock) {
-                  <span class="low-stock">Low stock</span>
-                }
-              </div>
-              <div class="qty-controls">
-                <button class="qty-btn" [disabled]="getCartQty(item.id) === 0" (click)="updateCart(item, -1)">−</button>
-                <span class="qty">{{ getCartQty(item.id) }}</span>
-                <button class="qty-btn" [disabled]="getCartQty(item.id) >= item.stockCount" (click)="updateCart(item, 1)">+</button>
-              </div>
+      <!-- Bottom Summary & Proceed Bar -->
+      <div class="bottom-bar">
+        <div class="bar-summary">
+          @if (selectedSeats().length === 0) {
+            <span class="no-selection-hint">Tap on seats to select</span>
+          } @else {
+            <div class="seats-info-col">
+              <span class="seats-count-text">{{ selectedSeats().length }} Seat{{ selectedSeats().length > 1 ? 's' : '' }} Selected</span>
+              <span class="seats-list-text">{{ selectedSeatNumbersStr() }}</span>
             </div>
           }
         </div>
-      }
 
-      <div class="footer-bar">
-        <div class="selection-summary">
-          <span class="seat-count">{{ selectedSeats().length }} seat(s)</span>
-          @if (concessionsTotal() > 0) {
-            <span class="hint"> + F&B ₹{{ concessionsTotal() | number:'1.2-2' }}</span>
-          }
-          <span class="total">₹{{ grandTotal() | number:'1.2-2' }}</span>
-        </div>
-        <button class="btn-proceed" (click)="proceedToSummary()">
-          Review Order <mat-icon>arrow_forward</mat-icon>
-        </button>
-      </div>
-    </div>
-  }
-
-  <!-- step 3: confirm -->
-  @if (step() === 3) {
-    <div class="summary-wrap">
-      <h2>Order Summary</h2>
-
-      <div class="summary-section">
-        <h3>Seats</h3>
-        @for (seat of selectedSeats(); track seat.id) {
-          <div class="summary-row">
-            <span>{{ seat.seatNumber }} ({{ seat.seatTypeName }})</span>
-            <span>₹{{ seat.price | number:'1.2-2' }}</span>
+        <div class="bar-action">
+          <div class="total-price-wrap">
+            <span class="price-label">Total</span>
+            <span class="price-val">₹{{ ticketsTotal() | number:'1.0-0' }}</span>
           </div>
-        }
-        <div class="summary-subtotal">
-          <span>Seats total</span>
-          <span>₹{{ ticketsTotal() | number:'1.2-2' }}</span>
+          <button class="btn-primary continue-btn" [disabled]="selectedSeatIds().size === 0" (click)="proceedToFnb()">
+            Continue
+          </button>
         </div>
       </div>
 
-      @if (concessionsTotal() > 0) {
-        <div class="summary-section">
-          <h3>Food & Beverages</h3>
-          @for (item of concessions(); track item.id) {
-            @if (getCartQty(item.id) > 0) {
-              <div class="summary-row">
-                <span>{{ item.itemName }} {{ item.itemSize }} × {{ getCartQty(item.id) }}</span>
-                <span>₹{{ (item.price * getCartQty(item.id)) | number:'1.2-2' }}</span>
+    }
+
+    <!-- STEP 2: Food & Beverage Add-ons -->
+    @if (step() === 2) {
+      <div class="fnb-container">
+        
+        <!-- Snack Selection Items -->
+        <div class="fnb-left-side">
+          <h2>Food & Beverages</h2>
+          
+          <div class="fnb-list">
+            @for (item of concessions(); track item.id) {
+              <div class="fnb-item-card">
+                <div class="fnb-img-box">
+                  {{ getConcessionIcon(item) }}
+                </div>
+
+                <div class="fnb-item-details">
+                  <h4 class="fnb-item-name">{{ item.itemName }} ({{ item.itemSize }})</h4>
+                  <span class="fnb-item-price">₹{{ item.price }}</span>
+                </div>
+
+                <!-- Quantity Incrementor / Decrementor -->
+                <div class="stepper-controls">
+                  <button class="step-btn" [disabled]="getCartQty(item.id) === 0" (click)="updateCart(item, -1)">−</button>
+                  <span class="step-qty">{{ getCartQty(item.id) }}</span>
+                  <button class="step-btn" [disabled]="getCartQty(item.id) >= item.stockCount" (click)="updateCart(item, 1)">+</button>
+                </div>
               </div>
             }
-          }
-          <div class="summary-subtotal">
-            <span>F&B total</span>
-            <span>₹{{ concessionsTotal() | number:'1.2-2' }}</span>
           </div>
         </div>
-      }
 
-      <div class="grand-total">
-        <span>Total</span>
-        <span>₹{{ grandTotal() | number:'1.2-2' }}</span>
-      </div>
+        <!-- Sidebar Summary Breakdown -->
+        <div class="order-summary-card">
+          <h3>Order Summary</h3>
+          
+          <div class="summary-line">
+            <span>{{ selectedSeats().length }} Tickets ({{ selectedSeatNumbersStr() }})</span>
+            <span>₹{{ ticketsTotal() | number:'1.0-0' }}</span>
+          </div>
 
-      @if (errorMsg()) {
-        <div class="error-msg">
-          <mat-icon>error_outline</mat-icon> {{ errorMsg() }}
+          @if (concessionsTotal() > 0) {
+            @for (item of concessions(); track item.id) {
+              @if (getCartQty(item.id) > 0) {
+                <div class="summary-line sub">
+                  <span>{{ item.itemName }} ({{ item.itemSize }}) × {{ getCartQty(item.id) }}</span>
+                  <span>₹{{ item.price * getCartQty(item.id) | number:'1.0-0' }}</span>
+                </div>
+              }
+            }
+          }
+
+          <div class="summary-divider"></div>
+
+          <div class="summary-line total-line">
+            <span>Total</span>
+            <span>₹{{ grandTotal() | number:'1.0-0' }}</span>
+          </div>
+
+          <button class="btn-primary add-booking-btn" (click)="proceedToPayment()">
+            Add to Booking
+          </button>
         </div>
-      }
 
-      <button class="btn-pay" [disabled]="submitting()" (click)="confirmBooking()">
-        @if (submitting()) {
-          <mat-spinner diameter="20" /> Booking...
-        } @else {
-          <mat-icon>lock</mat-icon> Pay & Book — ₹{{ grandTotal() | number:'1.2-2' }}
-        }
-      </button>
-    </div>
-  }
+      </div>
+    }
+
+    <!-- STEP 3: Payment Options -->
+    @if (step() === 3) {
+      <div class="payment-container">
+        
+        <div class="payment-card">
+          <h2>Payment</h2>
+          
+          <!-- Payment Method Choices -->
+          <div class="payment-methods-list">
+            
+            <div class="pay-method-option" [class.selected]="selectedPayment() === 'upi'" (click)="setPaymentMethod('upi')">
+              <div class="radio-circle">
+                <div class="radio-inner"></div>
+              </div>
+              <span class="method-title">UPI</span>
+              <div class="method-icons">
+                <span class="pay-badge gpay">GPay</span>
+                <span class="pay-badge phonepe">PhonePe</span>
+              </div>
+            </div>
+
+            <div class="pay-method-option" [class.selected]="selectedPayment() === 'card'" (click)="setPaymentMethod('card')">
+              <div class="radio-circle">
+                <div class="radio-inner"></div>
+              </div>
+              <span class="method-title">Credit / Debit Card</span>
+            </div>
+
+            <div class="pay-method-option" [class.selected]="selectedPayment() === 'netbanking'" (click)="setPaymentMethod('netbanking')">
+              <div class="radio-circle">
+                <div class="radio-inner"></div>
+              </div>
+              <span class="method-title">Net Banking</span>
+            </div>
+
+            <div class="pay-method-option" [class.selected]="selectedPayment() === 'wallets'" (click)="setPaymentMethod('wallets')">
+              <div class="radio-circle">
+                <div class="radio-inner"></div>
+              </div>
+              <span class="method-title">Wallets</span>
+            </div>
+
+            <div class="pay-method-option" [class.selected]="selectedPayment() === 'paylater'" (click)="setPaymentMethod('paylater')">
+              <div class="radio-circle">
+                <div class="radio-inner"></div>
+              </div>
+              <span class="method-title">Pay Later</span>
+            </div>
+
+          </div>
+
+          @if (errorMsg()) {
+            <div class="error-msg-box">
+              <mat-icon>error_outline</mat-icon> {{ errorMsg() }}
+            </div>
+          }
+
+          <div class="pay-action-row">
+            <div class="amount-payable-col">
+              <span class="payable-label">Amount Payable</span>
+              <span class="payable-val">₹{{ grandTotal() | number:'1.0-0' }}</span>
+            </div>
+
+            <button class="btn-primary pay-now-btn" [disabled]="submitting()" (click)="confirmBooking()">
+              @if (submitting()) {
+                <mat-spinner diameter="20" /> Processing...
+              } @else {
+                Pay Now
+              }
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    }
+
+  </div>
+
 }

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MovieTicketing.Domain.Entities;
+using MovieTicketing.Domain.Enums;
 
 namespace MovieTicketing.Infrastructure.Data;
 
@@ -89,13 +90,21 @@ public static class DbSeeder
                     PosterUrl = "https://upload.wikimedia.org/wikipedia/en/f/f7/Inside_Out_2_poster.jpg",
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
+                },
+                new()
+                {
+                    Title = "Spider-Man: No Way Home",
+                    Description = "With Spider-Man's identity now revealed, Peter asks Doctor Strange for help. When a spell goes wrong, dangerous foes from other worlds start to appear, forcing Peter to discover what it truly means to be Spider-Man.",
+                    DurationMinutes = 148,
+                    Genre = "Action, Adventure, Sci-Fi",
+                    PosterUrl = "https://image.tmdb.org/t/p/w500/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
                 }
             };
 
             await context.Movies.AddRangeAsync(movies);
             await context.SaveChangesAsync();
         }
-
-
     }
 }

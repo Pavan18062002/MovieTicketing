@@ -85,9 +85,9 @@ public class BookingService : IBookingService
                 var seat = seatLookup[seatId];
                 decimal multiplier = seat.SeatType switch
                 {
-                    SeatType.Premium => 1.3m,
-                    SeatType.VIP    => 1.6m,
-                    _               => 1.0m
+                    SeatType.Premium  => 1.3m,
+                    SeatType.VIP      => 1.6m,
+                    SeatType.Standard => 1.0m
                 };
                 decimal price = Math.Round(show.BaseTicketPrice * multiplier, 2);
                 ticketsTotal += price;

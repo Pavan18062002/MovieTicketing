@@ -1,0 +1,84 @@
+<div class="my-bookings-wrap">
+  
+  <div class="page-header">
+    <h1>My Bookings</h1>
+    <p>View your upcoming show tickets and booking receipts</p>
+  </div>
+
+  <!-- Filter tabs for upcoming vs past bookings -->
+  <div class="tab-switcher">
+    <button class="tab-btn" [class.active]="activeTab() === 'upcoming'" (click)="setTab('upcoming')">
+      Upcoming
+    </button>
+    <button class="tab-btn" [class.active]="activeTab() === 'past'" (click)="setTab('past')">
+      Past
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="spinner-wrap"><mat-spinner diameter="52" /></div>
+  } @else if (error()) {
+    <div class="empty-bookings-card">
+      <mat-icon class="empty-icon">lock</mat-icon>
+      <p>{{ error() }}</p>
+      <a routerLink="/auth/login" class="btn-primary">Sign In</a>
+    </div>
+  } @else if (filteredBookings().length === 0) {
+    <div class="empty-bookings-card">
+      <mat-icon class="empty-icon">confirmation_number</mat-icon>
+      <h3>No {{ activeTab() }} bookings found</h3>
+      <p>Explore movies and book your tickets now!</p>
+      <a routerLink="/movies" class="btn-primary">Book Movie Tickets</a>
+    </div>
+  } @else {
+
+    <!-- List of booking ticket cards -->
+    <div class="bookings-grid">
+      @for (booking of filteredBookings(); track booking.id) {
+        <div class="booking-card" [routerLink]="['/booking/confirmation', booking.id]">
+          
+          <div class="b-poster-box">
+            <img [src]="booking.posterUrl || 'https://placehold.co/100x140/131326/8b5cf6?text=Poster'"
+                 [alt]="booking.movieTitle"
+                 (error)="onImgError($event)"
+                 class="b-poster-img">
+          </div>
+
+          <div class="b-details">
+            <h3 class="b-title">{{ booking.movieTitle }}</h3>
+            
+            <div class="b-meta-line">
+              <span><mat-icon class="b-icon">videocam</mat-icon> {{ booking.screenName }}</span>
+              <span>•</span>
+              <span><mat-icon class="b-icon">schedule</mat-icon> {{ booking.showTime | date:'EEE, dd MMM • hh:mm a' }}</span>
+            </div>
+
+            <div class="b-seats-line">
+              <span class="seats-badge">Seats: {{ getSeatsString(booking) }}</span>
+              <span class="booking-ref">Ref: #{{ booking.bookingReference }}</span>
+            </div>
+
+            @if (booking.concessions.length > 0) {
+              <div class="b-fnb-line">
+                <mat-icon class="b-icon">fastfood</mat-icon>
+                <span>
+                  @for (c of booking.concessions; track c.itemName; let last = $last) {
+                    {{ c.itemName }} (x{{ c.quantity }}){{ !last ? ', ' : '' }}
+                  }
+                </span>
+              </div>
+            }
+          </div>
+
+          <div class="b-price-col">
+            <span class="b-total-val">₹{{ booking.totalAmount | number:'1.0-0' }}</span>
+            <span class="b-status-badge">Confirmed</span>
+          </div>
+
+        </div>
+      }
+    </div>
+
+  }
+
+</div>

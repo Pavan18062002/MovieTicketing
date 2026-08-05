@@ -6,6 +6,14 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../../core/services/api.service';
 import { SeatInfo, ShowSeatsResponse, ConcessionItem, BookingConcessionItem, BookingResponse } from '../../../core/models/models';
 
+// Represents seats grouped by row for rendering left, center, and right aisles
+interface SeatRowGroup {
+  rowLabel: string;
+  leftAisle: SeatInfo[];
+  centerAisle: SeatInfo[];
+  rightAisle: SeatInfo[];
+}
+
 @Component({
   selector: 'app-seat-selection',
   standalone: true,
@@ -18,35 +26,69 @@ export class SeatSelectionComponent implements OnInit {
   private route  = inject(ActivatedRoute);
   private router = inject(Router);
 
-  showData     = signal<ShowSeatsResponse | null>(null);
-  concessions  = signal<ConcessionItem[]>([]);
-  loading      = signal(true);
-  submitting   = signal(false);
-  errorMsg     = signal('');
-  step         = signal<1 | 2 | 3>(1);
+  // State signals for current show, available concessions, and loading status
+  showData       = signal<ShowSeatsResponse | null>(null);
+  concessions    = signal<ConcessionItem[]>([]);
+  loading        = signal(true);
+  submitting     = signal(false);
+  errorMsg       = signal('');
+  step           = signal<1 | 2 | 3>(1); // Step 1: Seats, Step 2: F&B, Step 3: Payment
 
-  selectedSeatIds  = signal<Set<number>>(new Set());
-  concessionCart   = signal<Map<number, number>>(new Map());
-  bookingResult    = signal<BookingResponse | null>(null);
+  // User selections
+  selectedSeatIds = signal<Set<number>>(new Set());
+  concessionCart  = signal<Map<number, number>>(new Map());
+  selectedPayment = signal<string>('upi');
+  bookingResult   = signal<BookingResponse | null>(null);
 
-  seatGrid = computed(() => {
+  // Groups screen seats into rows and aisle sections (left, center, right)
+  rowGroups = computed<SeatRowGroup[]>(() => {
     const data = this.showData();
     if (!data) return [];
-    const rows: SeatInfo[][] = [];
-    for (let r = 1; r <= data.totalRows; r++) {
-      rows.push(data.seats.filter(s => s.row === r).sort((a, b) => a.column - b.column));
+
+    const rowLetters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N'];
+    const groups: SeatRowGroup[] = [];
+
+    // Backend stores rows 0-indexed (row 0 = A, row 1 = B, etc.)
+    // So we loop from 0 to totalRows-1, not 1 to totalRows
+    const cols = data.totalColumns;
+    const leftMax  = Math.floor(cols * 0.45);       // ~45% of columns go to left aisle
+    const rightMin = Math.floor(cols * 0.55);       // remaining ~45% go to right aisle
+
+    for (let r = 0; r < data.totalRows; r++) {
+      const rowSeats = data.seats.filter(s => s.row === r).sort((a, b) => a.column - b.column);
+
+      // Skip rows that have no seats at all (data inconsistency guard)
+      if (rowSeats.length === 0) continue;
+
+      const label = rowLetters[r] || `R${r + 1}`;
+
+      groups.push({
+        rowLabel: label,
+        leftAisle:   rowSeats.filter(s => s.column < leftMax),
+        centerAisle: rowSeats.filter(s => s.column >= leftMax && s.column < rightMin),
+        rightAisle:  rowSeats.filter(s => s.column >= rightMin)
+      });
     }
-    return rows;
+
+    return groups;
   });
 
+  // Returns list of seat objects selected by the user
   selectedSeats = computed(() =>
     (this.showData()?.seats ?? []).filter(s => this.selectedSeatIds().has(s.id))
   );
 
+  // Comma-separated seat numbers string (e.g. "A1, A2")
+  selectedSeatNumbersStr = computed(() =>
+    this.selectedSeats().map(s => s.seatNumber).join(', ')
+  );
+
+  // Calculates subtotal for chosen ticket seats
   ticketsTotal = computed(() =>
     this.selectedSeats().reduce((sum, s) => sum + s.price, 0)
   );
 
+  // Calculates subtotal for chosen snacks and beverages
   concessionsTotal = computed(() => {
     let total = 0;
     this.concessionCart().forEach((qty, id) => {
@@ -56,6 +98,7 @@ export class SeatSelectionComponent implements OnInit {
     return total;
   });
 
+  // Calculates grand total (tickets + food & beverages)
   grandTotal = computed(() => this.ticketsTotal() + this.concessionsTotal());
 
   ngOnInit(): void {
@@ -66,6 +109,7 @@ export class SeatSelectionComponent implements OnInit {
     });
   }
 
+  // Toggles seat selection on/off when clicked
   toggleSeat(seat: SeatInfo): void {
     if (seat.isBooked) return;
     const current = new Set(this.selectedSeatIds());
@@ -81,14 +125,29 @@ export class SeatSelectionComponent implements OnInit {
     return this.selectedSeatIds().has(id);
   }
 
+  // Returns CSS class name based on booking status and seat tier.
+  // Backend enum: Standard = 1, Premium = 2, VIP = 3
   seatTypeClass(seat: SeatInfo): string {
     if (seat.isBooked) return 'booked';
     if (this.isSeatSelected(seat.id)) return 'selected';
-    if (seat.seatType === 3) return 'vip';
-    if (seat.seatType === 2) return 'premium';
-    return 'standard';
+    if (seat.seatType === 3) return 'vip';       // VIP — top tier
+    if (seat.seatType === 2) return 'premium';   // Premium — mid tier
+    return 'standard';                           // Standard — base tier (was 'available')
   }
 
+  // Maps concession item names to matching visual emojis
+  getConcessionIcon(item: ConcessionItem): string {
+    const name = item.itemName.toLowerCase();
+    if (name.includes('popcorn')) return '🍿';
+    if (name.includes('coke') || name.includes('pepsi') || name.includes('drink') ||
+        name.includes('soda') || name.includes('beverage') || name.includes('cola') ||
+        name.includes('juice') || name.includes('water')) return '🥤';
+    if (name.includes('nacho') || name.includes('cheese')) return '🧀';
+    if (name.includes('hot') || name.includes('dog')) return '🌭';
+    return '🥤';
+  }
+
+  // Advances to Step 2 (Food & Beverages) after selecting seats
   proceedToFnb(): void {
     if (this.selectedSeatIds().size === 0) return;
     this.errorMsg.set('');
@@ -102,6 +161,7 @@ export class SeatSelectionComponent implements OnInit {
     return this.concessionCart().get(id) ?? 0;
   }
 
+  // Adds or removes items from snack cart
   updateCart(item: ConcessionItem, delta: number): void {
     const cart = new Map(this.concessionCart());
     const current = cart.get(item.id) ?? 0;
@@ -114,10 +174,16 @@ export class SeatSelectionComponent implements OnInit {
     this.concessionCart.set(cart);
   }
 
-  proceedToSummary(): void {
+  // Advances to Step 3 (Payment)
+  proceedToPayment(): void {
     this.step.set(3);
   }
 
+  setPaymentMethod(method: string): void {
+    this.selectedPayment.set(method);
+  }
+
+  // Submits complete booking to backend transactional checkout API
   confirmBooking(): void {
     const data = this.showData();
     if (!data) return;
@@ -150,6 +216,7 @@ export class SeatSelectionComponent implements OnInit {
     });
   }
 
+  // Handles back button navigation between workflow steps
   goBack(): void {
     if (this.step() === 2) { this.step.set(1); return; }
     if (this.step() === 3) { this.step.set(2); return; }

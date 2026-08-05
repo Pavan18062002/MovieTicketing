@@ -42,7 +42,7 @@ export class ConcessionsAdminComponent implements OnInit {
   form = this.fb.group({
     itemName:   ['', Validators.required],
     itemSize:   ['', Validators.required],
-    category:   [0, Validators.required],
+    category:   [1, Validators.required],
     price:      [0, [Validators.required, Validators.min(0.01)]],
     stockCount: [0, [Validators.required, Validators.min(0)]]
   });
@@ -72,7 +72,7 @@ export class ConcessionsAdminComponent implements OnInit {
   cancelEdit(): void {
     this.editingId.set(null);
     this.form.get('stockCount')!.enable();
-    this.form.reset({ category: 0, price: 0, stockCount: 0 });
+    this.form.reset({ category: 1, price: 0, stockCount: 0 });
   }
 
   submit(): void {
@@ -115,7 +115,7 @@ export class ConcessionsAdminComponent implements OnInit {
           this.saving.set(false);
           if (res.success) {
             this.snack.open('Item added!', 'OK', { duration: 3000 });
-            this.formDirective.resetForm({ category: 0, price: 0, stockCount: 0 });
+            this.formDirective.resetForm({ category: 1, price: 0, stockCount: 0 });
             this.load();
           } else {
             this.snack.open(res.message, 'Close', { duration: 4000 });

@@ -129,9 +129,9 @@ public class ShowService : IShowService
         {
             decimal multiplier = seat.SeatType switch
             {
-                SeatType.Premium => 1.3m,
-                SeatType.VIP    => 1.6m,
-                _               => 1.0m
+                SeatType.Premium  => 1.3m,
+                SeatType.VIP      => 1.6m,
+                SeatType.Standard => 1.0m
             };
 
             return new SeatInfoDto

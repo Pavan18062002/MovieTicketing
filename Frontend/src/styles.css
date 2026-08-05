@@ -1,21 +1,45 @@
 /* Angular Material Prebuilt Theme (for Admin Dashboard) */
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 
-/* CSS Variables (Design System) */
+/* CSS Variables (CineMate Dark Theme Design System) */
 :root {
-  /* Colors */
-  --bg-main: #f4f5f9;
-  --bg-card: #ffffff;
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --text-main: #1e293b;
+  /* Dark Color Palette */
+  --bg-main: #0b0b14;
+  --bg-surface: #121225;
+  --bg-surface-elevated: #1a1a36;
+  --bg-card: #14142b;
+  --bg-input: #1b1b36;
+  
+  /* Accents */
+  --primary: #7c3aed;
+  --primary-light: #8b5cf6;
+  --primary-dark: #6d28d9;
+  --primary-glow: rgba(124, 58, 237, 0.4);
+  --primary-gradient: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+  --primary-gradient-hover: linear-gradient(135deg, #8b5cf6 0%, #4f46e5 100%);
+
+  /* Seat & Badge Status Colors */
+  --seat-available: #22c55e;
+  --seat-selected: #8b5cf6;
+  --seat-booked: #27273a;
+  --seat-premium: #f59e0b;
+
+  /* Text Colors */
+  --text-main: #f8fafc;
+  --text-secondary: #cbd5e1;
   --text-muted: #64748b;
+  --text-dim: #475569;
+
+  /* Status Colors */
   --error: #ef4444;
   --success: #10b981;
-  --border: #e2e8f0;
-  
+  --warning: #f59e0b;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-active: rgba(139, 92, 246, 0.5);
+
   /* Typography */
+  --font-heading: 'Outfit', 'Inter', sans-serif;
   --font-family: 'Inter', sans-serif;
 }
 
@@ -34,21 +58,48 @@ body {
   display: flex;
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Custom Thin Dark Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-main);
+}
+::-webkit-scrollbar-thumb {
+  background: #232342;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
 }
 
 /* Base Styles */
-h1, h2, h3, h4, h5, h6 { font-weight: 600; letter-spacing: -0.025em; }
-a { color: var(--primary); text-decoration: none; transition: color 0.2s ease; }
-a:hover { color: var(--primary-hover); }
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+}
 
-/* --- Reusable Utility Classes --- */
+a {
+  color: var(--primary-light);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+a:hover {
+  color: #a78bfa;
+}
 
-/* White Card (Kept class name for backward compatibility) */
+/* --- Utility Cards & Layouts --- */
 .glass-card {
-  background: var(--bg-card);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 1rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  border-radius: 1.25rem;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   padding: 2.5rem;
   width: 100%;
 }
@@ -63,68 +114,279 @@ a:hover { color: var(--primary-hover); }
 .form-label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-bottom: 0.5rem;
 }
 
 .form-input {
-  background: #fff;
+  background: var(--bg-input);
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  padding: 0.85rem 1.15rem;
   color: var(--text-main);
   font-family: var(--font-family);
-  font-size: 1rem;
-  transition: all 0.3s ease;
+  font-size: 0.95rem;
+  transition: all 0.25s ease;
   outline: none;
 }
 
 .form-input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+  background: #202042;
 }
-.form-input::placeholder { color: #94a3b8; }
+
+.form-input::placeholder { color: var(--text-muted); }
 .form-input.is-invalid { border-color: var(--error); }
-.form-input.is-invalid:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
+.form-input.is-invalid:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25); }
 
 .error-text {
   color: var(--error);
-  font-size: 0.8rem;
+  font-size: 0.825rem;
   margin-top: 0.4rem;
   animation: fadeIn 0.3s ease;
 }
 
 /* Buttons */
 .btn-primary {
-  background: var(--primary);
-  color: white;
+  background: var(--primary-gradient);
+  color: #ffffff;
   border: none;
-  border-radius: 0.5rem;
-  padding: 0.875rem 1.5rem;
-  font-size: 1rem;
+  border-radius: 0.75rem;
+  padding: 0.85rem 1.75rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  width: 100%;
-  transition: all 0.3s ease;
-  font-family: var(--font-family);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.25s ease;
+  font-family: var(--font-heading);
+  box-shadow: 0 4px 15px var(--primary-glow);
 }
+
 .btn-primary:hover {
-  background: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+  background: var(--primary-gradient-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--primary-glow);
 }
+
 .btn-primary:active { transform: translateY(0); }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-outline {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  border-radius: 0.75rem;
+  padding: 0.85rem 1.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(10px);
+}
+
+.btn-outline:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+/* --- Angular Material Dark Theme Overrides for Admin --- */
+
+.mat-mdc-card, .form-card {
+  background-color: #131326 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
+}
+
+.mat-mdc-card-title, .mat-mdc-card-subtitle {
+  color: #ffffff !important;
+}
+
+/* Material Form Fields & Inputs */
+.mat-mdc-form-field {
+  --mdc-filled-text-field-container-color: #181832 !important;
+  --mdc-filled-text-field-input-text-color: #ffffff !important;
+  --mdc-filled-text-field-label-text-color: #94a3b8 !important;
+  --mdc-outlined-text-field-input-text-color: #ffffff !important;
+  --mdc-outlined-text-field-label-text-color: #94a3b8 !important;
+  --mdc-outlined-text-field-outline-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.mat-mdc-input-element,
+.mat-mdc-select-value,
+input.mat-mdc-input-element,
+.mat-mdc-form-field-input-control {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.mat-mdc-select-arrow {
+  color: #94a3b8 !important;
+}
+
+/* Datepicker Toggle Icon & Suffix Icon */
+.mat-datepicker-toggle .mat-mdc-icon-button,
+.mat-datepicker-toggle-default-icon,
+.mat-datepicker-toggle mat-icon,
+.mat-mdc-form-field-icon-suffix .mat-icon,
+.mat-mdc-form-field-icon-suffix button {
+  color: #a78bfa !important;
+  fill: #a78bfa !important;
+}
+
+/* Datepicker Calendar Popup Overrides */
+.mat-datepicker-content,
+.mat-datepicker-content-container,
+.mat-calendar {
+  background-color: #131326 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6) !important;
+}
+
+.mat-calendar-header,
+.mat-calendar-controls,
+.mat-calendar-period-button,
+.mat-calendar-arrow {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+.mat-calendar-table-header,
+.mat-calendar-table-header-divider,
+.mat-calendar-body-label {
+  color: #94a3b8 !important;
+}
+
+.mat-calendar-body-cell-content {
+  color: #cbd5e1 !important;
+  border-radius: 50% !important;
+}
+
+.mat-calendar-body-cell-content:hover {
+  background-color: #202042 !important;
+  color: #8b5cf6 !important;
+}
+
+.mat-calendar-body-selected {
+  background-color: #7c3aed !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.5) !important;
+}
+
+.mat-calendar-body-today:not(.mat-calendar-body-selected) {
+  border-color: #8b5cf6 !important;
+}
+
+/* Select Panel Overlay Containers Dark Theme */
+.mat-mdc-select-panel,
+.cdk-overlay-pane .mat-mdc-select-panel,
+.mat-mdc-menu-panel,
+.cdk-overlay-pane .mat-mdc-menu-panel,
+.mdc-menu-surface {
+  background-color: #131326 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+
+.mat-mdc-select-panel .mdc-list,
+.mat-mdc-menu-panel .mdc-list,
+.mdc-menu-surface .mdc-list {
+  background-color: #131326 !important;
+  padding: 4px 0 !important;
+}
+
+.mat-mdc-select-panel .mat-mdc-option,
+.mat-mdc-menu-panel .mat-mdc-option,
+.mat-mdc-option {
+  background-color: #131326 !important;
+  color: #e2e8f0 !important;
+}
+
+.mat-mdc-select-panel .mat-mdc-option:hover,
+.mat-mdc-select-panel .mat-mdc-option.mdc-list-item--selected,
+.mat-mdc-menu-panel .mat-mdc-option:hover,
+.mat-mdc-menu-panel .mat-mdc-option.mdc-list-item--selected,
+.mat-mdc-option:hover,
+.mat-mdc-option.mdc-list-item--selected {
+  background-color: #202042 !important;
+  color: #8b5cf6 !important;
+}
+
+/* Material Data Tables */
+.mat-mdc-table {
+  background-color: #131326 !important;
+  color: #e2e8f0 !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+}
+
+.mat-mdc-header-row {
+  background-color: #181832 !important;
+}
+
+.mat-mdc-header-cell {
+  color: #a78bfa !important;
+  font-weight: 700 !important;
+  font-size: 0.82rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.mat-mdc-cell, .mat-mdc-row {
+  color: #cbd5e1 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.mat-mdc-row:hover {
+  background-color: rgba(124, 58, 237, 0.08) !important;
+}
+
+/* Material Paginator */
+.mat-mdc-paginator {
+  background-color: #131326 !important;
+  color: #94a3b8 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.mat-mdc-paginator-icon {
+  fill: #94a3b8 !important;
+}
+
+/* Material Dialogs */
+.mat-mdc-dialog-container .mdc-dialog__surface {
+  background-color: #131326 !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  border-radius: 20px !important;
+}
+
+/* Admin Item Titles & Badges */
+.item-name { color: #ffffff !important; }
+.page-header h1 { color: #ffffff !important; }
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-5px); }
+  from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.animate-slide-up {
-  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
+
+.animate-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
