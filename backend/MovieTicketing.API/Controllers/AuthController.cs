@@ -24,7 +24,7 @@ public class AuthController : ControllerBase
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
-    /// <summary>Login with email and password; returns a JWT.</summary>
+    /// <summary>Login with email and password.</summary>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {

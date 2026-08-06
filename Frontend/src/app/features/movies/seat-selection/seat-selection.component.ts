@@ -6,12 +6,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../../core/services/api.service';
 import { SeatInfo, ShowSeatsResponse, ConcessionItem, BookingConcessionItem, BookingResponse } from '../../../core/models/models';
 
-// Represents seats grouped by row for rendering left, center, and right aisles
+// Represents seats grouped by row for continuous rendering
 interface SeatRowGroup {
   rowLabel: string;
-  leftAisle: SeatInfo[];
-  centerAisle: SeatInfo[];
-  rightAisle: SeatInfo[];
+  seats: SeatInfo[];
 }
 
 @Component({
@@ -49,11 +47,6 @@ export class SeatSelectionComponent implements OnInit {
     const groups: SeatRowGroup[] = [];
 
     // Backend stores rows 0-indexed (row 0 = A, row 1 = B, etc.)
-    // So we loop from 0 to totalRows-1, not 1 to totalRows
-    const cols = data.totalColumns;
-    const leftMax  = Math.floor(cols * 0.45);       // ~45% of columns go to left aisle
-    const rightMin = Math.floor(cols * 0.55);       // remaining ~45% go to right aisle
-
     for (let r = 0; r < data.totalRows; r++) {
       const rowSeats = data.seats.filter(s => s.row === r).sort((a, b) => a.column - b.column);
 
@@ -64,9 +57,7 @@ export class SeatSelectionComponent implements OnInit {
 
       groups.push({
         rowLabel: label,
-        leftAisle:   rowSeats.filter(s => s.column < leftMax),
-        centerAisle: rowSeats.filter(s => s.column >= leftMax && s.column < rightMin),
-        rightAisle:  rowSeats.filter(s => s.column >= rightMin)
+        seats: rowSeats
       });
     }
 

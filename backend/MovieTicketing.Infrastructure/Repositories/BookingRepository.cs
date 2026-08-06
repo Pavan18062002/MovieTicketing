@@ -34,6 +34,7 @@ public class BookingRepository : GenericRepository<Booking>, IBookingRepository
             .Include(b => b.Show)
                 .ThenInclude(s => s.Screen)
             .Include(b => b.BookingSeats)
+                .ThenInclude(bs => bs.Seat)
             .Where(b => b.UserId == userId)
             .OrderByDescending(b => b.BookedAt)
             .ToListAsync();

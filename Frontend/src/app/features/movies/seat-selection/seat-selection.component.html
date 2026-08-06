@@ -42,37 +42,9 @@
           <div class="seat-row">
             <span class="row-label">{{ row.rowLabel }}</span>
             
-            <!-- Left Aisle Seats -->
+            <!-- Continuous Seat Row -->
             <div class="aisle-group">
-              @for (seat of row.leftAisle; track seat.id) {
-                <button
-                  class="seat-box"
-                  [class]="seatTypeClass(seat)"
-                  [disabled]="seat.isBooked"
-                  [title]="seat.seatNumber + ' — ₹' + seat.price"
-                  (click)="toggleSeat(seat)">
-                  {{ seat.column + 1 }}
-                </button>
-              }
-            </div>
-
-            <!-- Center Aisle Seats -->
-            <div class="aisle-group">
-              @for (seat of row.centerAisle; track seat.id) {
-                <button
-                  class="seat-box"
-                  [class]="seatTypeClass(seat)"
-                  [disabled]="seat.isBooked"
-                  [title]="seat.seatNumber + ' — ₹' + seat.price"
-                  (click)="toggleSeat(seat)">
-                  {{ seat.column + 1 }}
-                </button>
-              }
-            </div>
-
-            <!-- Right Aisle Seats -->
-            <div class="aisle-group">
-              @for (seat of row.rightAisle; track seat.id) {
+              @for (seat of row.seats; track seat.id) {
                 <button
                   class="seat-box"
                   [class]="seatTypeClass(seat)"

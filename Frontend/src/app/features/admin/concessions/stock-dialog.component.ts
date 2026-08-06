@@ -11,8 +11,8 @@ import { ConcessionItem } from '../../../core/models/models';
   standalone: true,
   imports: [ReactiveFormsModule, MatDialogModule, MatButtonModule, MatFormFieldModule, MatInputModule],
   template: `
-    <h2 mat-dialog-title>Update Stock — {{ data.item.itemName }} ({{ data.item.itemSize }})</h2>
-    <mat-dialog-content>
+    <h2 mat-dialog-title style="color: #ffffff;">Update Stock — {{ data.item.itemName }} ({{ data.item.itemSize }})</h2>
+    <mat-dialog-content style="color: #ffffff;">
       <p>Current stock: <strong>{{ data.item.stockCount }}</strong></p>
       <mat-form-field appearance="outline" style="width:100%">
         <mat-label>New Stock Count</mat-label>
