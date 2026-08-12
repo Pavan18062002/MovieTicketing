@@ -6,8 +6,10 @@ using Microsoft.OpenApi.Models;
 using MovieTicketing.Infrastructure.Data;
 using MovieTicketing.Application.Services;
 using MovieTicketing.Application.Interfaces;
+using MovieTicketing.Infrastructure.Services;
 using MovieTicketing.API.Swagger;
 using MovieTicketing.Domain.Entities;
+using StackExchange.Redis;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +19,43 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
+
+// Redis setup — safe initialization with fallback to in-memory
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+IConnectionMultiplexer? redisMultiplexer = null;
+
+if (!string.IsNullOrWhiteSpace(redisConnectionString))
+{
+    try
+    {
+        var redisOptions = ConfigurationOptions.Parse(redisConnectionString);
+        redisOptions.AbortOnConnectFail = false;
+        redisOptions.ConnectTimeout = 1000;
+        redisMultiplexer = ConnectionMultiplexer.Connect(redisOptions);
+    }
+    catch
+    {
+        // Connection failed, fall back gracefully
+    }
+}
+
+if (redisMultiplexer != null && redisMultiplexer.IsConnected)
+{
+    builder.Services.AddSingleton<IConnectionMultiplexer>(redisMultiplexer);
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = "MovieTicketing:";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+    builder.Services.AddSingleton<IConnectionMultiplexer>(_ => null!);
+}
+
+builder.Services.AddSingleton<IRedisCacheService, RedisCacheService>();
+
 
 // Configure ASP.NET Core Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()

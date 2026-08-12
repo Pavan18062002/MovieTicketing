@@ -18,6 +18,28 @@ public class BookingController : ControllerBase
         _bookingService = bookingService;
     }
 
+    /// <summary>Temporarily locks selected seats in Redis for 5 minutes.</summary>
+    [HttpPost("lock-seats")]
+    public async Task<IActionResult> LockSeats([FromBody] LockSeatsRequestDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _bookingService.LockSeatsAsync(userId, dto);
+        return result.Success ? Ok(result) : Conflict(result);
+    }
+
+    /// <summary>Releases Redis seat locks when the user deselects seats or navigates away.</summary>
+    [HttpPost("unlock-seats")]
+    public async Task<IActionResult> UnlockSeats([FromBody] LockSeatsRequestDto dto)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var result = await _bookingService.UnlockSeatsAsync(userId, dto);
+        return Ok(result);
+    }
+
     /// <summary>Book seats and optionally order concessions for a show.</summary>
     [HttpPost("checkout")]
     public async Task<IActionResult> Checkout([FromBody] CheckoutRequestDto dto)

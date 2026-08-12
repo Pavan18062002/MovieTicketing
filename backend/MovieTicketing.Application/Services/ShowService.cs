@@ -11,10 +11,14 @@ namespace MovieTicketing.Application.Services;
 public class ShowService : IShowService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IRedisCacheService _cache;
 
-    public ShowService(IUnitOfWork unitOfWork)
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
+
+    public ShowService(IUnitOfWork unitOfWork, IRedisCacheService cache)
     {
         _unitOfWork = unitOfWork;
+        _cache      = cache;
     }
 
     public async Task<ApiResponse<List<ShowResponseDto>>> GetAllAsync()
@@ -25,17 +29,35 @@ public class ShowService : IShowService
 
     public async Task<ApiResponse<List<ShowResponseDto>>> GetByMovieIdAsync(int movieId)
     {
+        var key = $"shows:movie:{movieId}";
+
+        var cached = await _cache.GetAsync<List<ShowResponseDto>>(key);
+        if (cached != null)
+            return ApiResponse<List<ShowResponseDto>>.Ok(cached);
+
         var shows = await _unitOfWork.Shows.GetByMovieIdAsync(movieId);
-        return ApiResponse<List<ShowResponseDto>>.Ok(shows.Select(MapToDto).ToList());
+        var result = shows.Select(MapToDto).ToList();
+        await _cache.SetAsync(key, result, CacheTtl);
+
+        return ApiResponse<List<ShowResponseDto>>.Ok(result);
     }
 
     public async Task<ApiResponse<ShowResponseDto>> GetByIdAsync(int id)
     {
+        var key = $"shows:{id}";
+
+        var cached = await _cache.GetAsync<ShowResponseDto>(key);
+        if (cached != null)
+            return ApiResponse<ShowResponseDto>.Ok(cached);
+
         var show = await _unitOfWork.Shows.GetWithDetailsByIdAsync(id);
         if (show == null)
             return ApiResponse<ShowResponseDto>.Fail("Show not found.");
 
-        return ApiResponse<ShowResponseDto>.Ok(MapToDto(show));
+        var result = MapToDto(show);
+        await _cache.SetAsync(key, result, CacheTtl);
+
+        return ApiResponse<ShowResponseDto>.Ok(result);
     }
 
     public async Task<ApiResponse<ShowResponseDto>> CreateAsync(CreateShowDto dto)
@@ -71,6 +93,9 @@ public class ShowService : IShowService
         await _unitOfWork.Shows.AddAsync(show);
         await _unitOfWork.SaveChangesAsync();
 
+        // Clear shows cache for this movie so the new show appears immediately
+        await _cache.RemoveByPrefixAsync("shows:");
+
         var created = await _unitOfWork.Shows.GetWithDetailsByIdAsync(show.Id);
         return ApiResponse<ShowResponseDto>.Ok(MapToDto(created!), "Show created successfully.");
     }
@@ -96,6 +121,8 @@ public class ShowService : IShowService
         _unitOfWork.Shows.Update(show);
         await _unitOfWork.SaveChangesAsync();
 
+        await _cache.RemoveByPrefixAsync("shows:");
+
         var updated = await _unitOfWork.Shows.GetWithDetailsByIdAsync(id);
         return ApiResponse<ShowResponseDto>.Ok(MapToDto(updated!), "Show updated successfully.");
     }
@@ -109,6 +136,8 @@ public class ShowService : IShowService
         show.IsActive = false;
         _unitOfWork.Shows.Update(show);
         await _unitOfWork.SaveChangesAsync();
+
+        await _cache.RemoveByPrefixAsync("shows:");
 
         return ApiResponse<bool>.Ok(true, "Show deactivated successfully.");
     }

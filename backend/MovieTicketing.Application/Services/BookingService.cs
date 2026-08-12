@@ -10,14 +10,58 @@ namespace MovieTicketing.Application.Services;
 public class BookingService : IBookingService
 {
     private readonly IUnitOfWork _unitOfWork;
-    public BookingService(IUnitOfWork unitOfWork)
+    private readonly IRedisCacheService _cache;
+
+    private static readonly TimeSpan LockTtl = TimeSpan.FromMinutes(5);
+
+    public BookingService(IUnitOfWork unitOfWork, IRedisCacheService cache)
     {
         _unitOfWork = unitOfWork;
+        _cache = cache;
+    }
+
+    public async Task<ApiResponse<LockSeatsResponseDto>> LockSeatsAsync(string userId, LockSeatsRequestDto dto)
+    {
+        var locked = new List<int>();
+
+        foreach (var seatId in dto.SeatIds)
+        {
+            var acquired = await _cache.AcquireSeatLockAsync(dto.ShowId, seatId, userId, LockTtl);
+            if (!acquired)
+            {
+                // Roll back any locks we already acquired in this request
+                foreach (var alreadyLocked in locked)
+                    await _cache.ReleaseSeatLockAsync(dto.ShowId, alreadyLocked);
+
+                return ApiResponse<LockSeatsResponseDto>.Fail("Seat is already selected by another user. Please choose a different seat.");
+            }
+
+            locked.Add(seatId);
+        }
+
+        return ApiResponse<LockSeatsResponseDto>.Ok(new LockSeatsResponseDto
+        {
+            Success = true,
+            Message = "Seats locked successfully.",
+            ExpiresInSeconds = (int)LockTtl.TotalSeconds,
+            LockedSeatIds = locked
+        });
+    }
+
+    // Releases locks when user deselects or leaves the page
+    public async Task<ApiResponse<bool>> UnlockSeatsAsync(string userId, LockSeatsRequestDto dto)
+    {
+        foreach (var seatId in dto.SeatIds)
+        {
+            await _cache.ReleaseSeatLockAsync(dto.ShowId, seatId);
+        }
+
+
+        return ApiResponse<bool>.Ok(true, "Seats unlocked.");
     }
 
     public async Task<ApiResponse<BookingResponseDto>> CheckoutAsync(string userId, CheckoutRequestDto dto)
     {
-
         var show = await _unitOfWork.Shows.GetWithDetailsByIdAsync(dto.ShowId);
         if (show == null || !show.IsActive)
             return ApiResponse<BookingResponseDto>.Fail("Show not found or is no longer active.");
@@ -26,16 +70,23 @@ public class BookingService : IBookingService
         if (screen == null)
             return ApiResponse<BookingResponseDto>.Fail("Screen not found.");
 
-        // Verify all requested seats belong to this show's screen
         var screenSeatIds = screen.Seats.Select(s => s.Id).ToHashSet();
         var invalidSeats = dto.SeatIds.Where(id => !screenSeatIds.Contains(id)).ToList();
         if (invalidSeats.Any())
             return ApiResponse<BookingResponseDto>.Fail("One or more selected seats do not belong to this show's screen.");
 
+        // Verify the user holds the Redis lock for every seat before we touch the DB
+        foreach (var seatId in dto.SeatIds)
+        {
+            var owner = await _cache.GetSeatLockOwnerAsync(dto.ShowId, seatId);
+            if (owner != null && owner != userId)
+                return ApiResponse<BookingResponseDto>.Fail("Your seat reservation has expired. Please reselect your seats and try again.");
+        }
+
+
         var concessionItemIds = dto.ConcessionItems.Select(c => c.ConcessionItemId).ToList();
         var concessionItems = new List<ConcessionItem>();
 
-        // ACID Transaction 
         await using var transaction = await _unitOfWork.BeginTransactionAsync();
         try
         {
@@ -47,8 +98,7 @@ public class BookingService : IBookingService
             if (concessionItemIds.Any())
             {
                 var allConcessions = await _unitOfWork.Concessions.GetAllAsync();
-                concessionItems = allConcessions
-                    .Where(c => concessionItemIds.Contains(c.Id)).ToList();
+                concessionItems = allConcessions.Where(c => concessionItemIds.Contains(c.Id)).ToList();
 
                 var missingIds = concessionItemIds.Except(concessionItems.Select(c => c.Id)).ToList();
                 if (missingIds.Any())
@@ -75,7 +125,8 @@ public class BookingService : IBookingService
                 item.UpdatedAt = DateTime.UtcNow;
                 _unitOfWork.Concessions.Update(item);
             }
-            //Calculate seat prices
+
+            // Calculate seat prices
             var seatLookup = screen.Seats.ToDictionary(s => s.Id);
             decimal ticketsTotal = 0m;
             var bookingSeatEntities = new List<(int SeatId, decimal Price)>();
@@ -85,9 +136,10 @@ public class BookingService : IBookingService
                 var seat = seatLookup[seatId];
                 decimal multiplier = seat.SeatType switch
                 {
-                    SeatType.Premium  => 1.3m,
-                    SeatType.VIP      => 1.6m,
-                    SeatType.Standard => 1.0m
+                    SeatType.Premium => 1.3m,
+                    SeatType.VIP => 1.6m,
+                    SeatType.Standard => 1.0m,
+                    _ => 1.0m
                 };
                 decimal price = Math.Round(show.BaseTicketPrice * multiplier, 2);
                 ticketsTotal += price;
@@ -127,6 +179,10 @@ public class BookingService : IBookingService
             await _unitOfWork.SaveChangesAsync();
             await transaction.CommitAsync();
 
+            // locks released after commit — seats now permanently booked in DB
+            foreach (var seatId in dto.SeatIds)
+                await _cache.ReleaseSeatLockAsync(dto.ShowId, seatId);
+
             var response = BuildBookingResponse(booking, show, seatLookup, dto.ConcessionItems, concessionItems, ticketsTotal, concessionsTotal);
             return ApiResponse<BookingResponseDto>.Ok(response, "Booking confirmed successfully!");
         }
@@ -150,14 +206,11 @@ public class BookingService : IBookingService
         if (booking == null)
             return ApiResponse<BookingResponseDto>.Fail("Booking not found.");
 
-        // Security: ensure the booking belongs to the requesting user
         if (booking.UserId != userId)
             return ApiResponse<BookingResponseDto>.Fail("Booking not found.");
 
         return ApiResponse<BookingResponseDto>.Ok(MapToSimpleDto(booking));
     }
-
-    // helpers
 
     private static string GenerateBookingReference()
     {
@@ -180,13 +233,13 @@ public class BookingService : IBookingService
             var seat = seatLookup.GetValueOrDefault(bs.SeatId);
             return new BookingSeatResponseDto
             {
-                SeatId       = bs.SeatId,
-                SeatNumber   = seat?.SeatNumber ?? string.Empty,
-                SeatType     = seat?.SeatType ?? SeatType.Standard,
+                SeatId = bs.SeatId,
+                SeatNumber = seat?.SeatNumber ?? string.Empty,
+                SeatType = seat?.SeatType ?? SeatType.Standard,
                 SeatTypeName = seat?.SeatType.ToString() ?? string.Empty,
-                Row          = seat?.Row ?? 0,
-                Column       = seat?.Column ?? 0,
-                Price        = bs.Price
+                Row = seat?.Row ?? 0,
+                Column = seat?.Column ?? 0,
+                Price = bs.Price
             };
         }).ToList();
 
@@ -196,11 +249,11 @@ public class BookingService : IBookingService
             return new BookingConcessionResponseDto
             {
                 ConcessionItemId = item.Id,
-                ItemName         = item.ItemName,
-                ItemSize         = item.ItemSize,
-                Quantity         = oc.Quantity,
-                UnitPrice        = item.Price,
-                Subtotal         = item.Price * oc.Quantity
+                ItemName = item.ItemName,
+                ItemSize = item.ItemSize,
+                Quantity = oc.Quantity,
+                UnitPrice = item.Price,
+                Subtotal = item.Price * oc.Quantity
             };
         }).ToList();
 
@@ -228,13 +281,13 @@ public class BookingService : IBookingService
     {
         var seats = booking.BookingSeats.Select(bs => new BookingSeatResponseDto
         {
-            SeatId       = bs.SeatId,
-            SeatNumber   = bs.Seat?.SeatNumber ?? string.Empty,
-            SeatType     = bs.Seat?.SeatType ?? SeatType.Standard,
+            SeatId = bs.SeatId,
+            SeatNumber = bs.Seat?.SeatNumber ?? string.Empty,
+            SeatType = bs.Seat?.SeatType ?? SeatType.Standard,
             SeatTypeName = bs.Seat?.SeatType.ToString() ?? string.Empty,
-            Row          = bs.Seat?.Row ?? 0,
-            Column       = bs.Seat?.Column ?? 0,
-            Price        = bs.Price
+            Row = bs.Seat?.Row ?? 0,
+            Column = bs.Seat?.Column ?? 0,
+            Price = bs.Price
         }).ToList();
 
         return new BookingResponseDto

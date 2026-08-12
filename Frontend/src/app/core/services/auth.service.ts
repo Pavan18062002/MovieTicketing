@@ -8,13 +8,12 @@ import { environment } from '../../../environments/environment';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly TOKEN_KEY = 'mt_token';
-  private readonly USER_KEY  = 'mt_user';
+  private readonly USER_KEY = 'mt_user';
 
-  // Angular Signals — reactive state without a separate state library
   private _user = signal<AuthResponse | null>(this.loadUser());
-  readonly user       = this._user.asReadonly();
+  readonly user = this._user.asReadonly();
   readonly isLoggedIn = computed(() => !!this._user());
-  readonly isAdmin    = computed(() => this._user()?.role === 'Admin');
+  readonly isAdmin = computed(() => this._user()?.role === 'Admin');
 
   constructor(private http: HttpClient, private router: Router) {}
 

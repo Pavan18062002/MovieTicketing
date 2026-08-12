@@ -4,6 +4,18 @@
 } @else if (showData()) {
 
   <div class="seat-selection-page">
+
+    <!-- Timer expiry modal — shown when 5-min lock period has passed -->
+    @if (timerExpired()) {
+      <div class="expiry-overlay">
+        <div class="expiry-modal">
+          <div class="expiry-icon">⏰</div>
+          <h2>Your seat hold has expired</h2>
+          <p>The 5-minute reservation window has passed and your seats have been released. Other users can now select them.</p>
+          <button class="btn-primary" (click)="dismissExpiredModal()">Reselect Seats</button>
+        </div>
+      </div>
+    }
     
     <!-- Top Navigation & Step Header -->
     <div class="top-nav-bar">
@@ -60,6 +72,22 @@
           </div>
         }
       </div>
+
+      <!-- Lock timer — shown when user has seats held in Redis -->
+      @if (timerDisplay()) {
+        <div class="lock-timer-bar" [class.expiring]="lockTimer()! <= 60">
+          <mat-icon>timer</mat-icon>
+          <span>Seats held for <strong>{{ timerDisplay() }}</strong> — complete booking before time runs out</span>
+        </div>
+      }
+
+      <!-- Seat conflict / lock error message -->
+      @if (errorMsg()) {
+        <div class="seat-error-banner">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ errorMsg() }}</span>
+        </div>
+      }
 
       <!-- Bottom Summary & Proceed Bar -->
       <div class="bottom-bar">

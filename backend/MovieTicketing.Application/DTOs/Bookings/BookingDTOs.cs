@@ -47,6 +47,23 @@ public class CheckoutRequestDto
     public List<CheckoutConcessionItemDto> ConcessionItems { get; set; } = new();
 }
 
+public class LockSeatsRequestDto
+{
+    [Required]
+    public int ShowId { get; set; }
+
+    [Required, MinLength(1, ErrorMessage = "At least one seat must be selected.")]
+    public List<int> SeatIds { get; set; } = new();
+}
+
+public class LockSeatsResponseDto
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public int ExpiresInSeconds { get; set; }
+    public List<int> LockedSeatIds { get; set; } = new();
+}
+
 public class BookingSeatResponseDto
 {
     public int SeatId { get; set; }

@@ -6,7 +6,8 @@ import {
   Screen, CreateScreenRequest, UpdateScreenRequest,
   Show, CreateShowRequest, UpdateShowRequest,
   ConcessionItem, CreateConcessionRequest, UpdateConcessionRequest,
-  ShowSeatsResponse, CheckoutRequest, BookingResponse
+  ShowSeatsResponse, CheckoutRequest, BookingResponse,
+  LockSeatsRequest, LockSeatsResponse
 } from '../models/models';
 import { environment } from '../../../environments/environment';
 
@@ -115,6 +116,14 @@ export class ApiService {
   }
 
   // booking
+
+  lockSeats(payload: LockSeatsRequest): Observable<ApiResponse<LockSeatsResponse>> {
+    return this.http.post<ApiResponse<LockSeatsResponse>>(`${this.api}/booking/lock-seats`, payload);
+  }
+
+  unlockSeats(payload: LockSeatsRequest): Observable<ApiResponse<boolean>> {
+    return this.http.post<ApiResponse<boolean>>(`${this.api}/booking/unlock-seats`, payload);
+  }
 
   checkout(payload: CheckoutRequest): Observable<ApiResponse<BookingResponse>> {
     return this.http.post<ApiResponse<BookingResponse>>(`${this.api}/booking/checkout`, payload);

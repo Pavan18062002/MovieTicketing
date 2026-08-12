@@ -1,12 +1,12 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { interval, Subscription } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
 import { SeatInfo, ShowSeatsResponse, ConcessionItem, BookingConcessionItem, BookingResponse } from '../../../core/models/models';
 
-// Represents seats grouped by row for continuous rendering
 interface SeatRowGroup {
   rowLabel: string;
   seats: SeatInfo[];
@@ -19,26 +19,28 @@ interface SeatRowGroup {
   templateUrl: './seat-selection.component.html',
   styleUrl: './seat-selection.component.css'
 })
-export class SeatSelectionComponent implements OnInit {
-  private api    = inject(ApiService);
-  private route  = inject(ActivatedRoute);
+export class SeatSelectionComponent implements OnInit, OnDestroy {
+  private api = inject(ApiService);
+  private route = inject(ActivatedRoute);
   private router = inject(Router);
 
-  // State signals for current show, available concessions, and loading status
-  showData       = signal<ShowSeatsResponse | null>(null);
-  concessions    = signal<ConcessionItem[]>([]);
-  loading        = signal(true);
-  submitting     = signal(false);
-  errorMsg       = signal('');
-  step           = signal<1 | 2 | 3>(1); // Step 1: Seats, Step 2: F&B, Step 3: Payment
+  showData = signal<ShowSeatsResponse | null>(null);
+  concessions = signal<ConcessionItem[]>([]);
+  loading = signal(true);
+  submitting = signal(false);
+  errorMsg = signal('');
+  step = signal<1 | 2 | 3>(1);
 
-  // User selections
   selectedSeatIds = signal<Set<number>>(new Set());
-  concessionCart  = signal<Map<number, number>>(new Map());
+  concessionCart = signal<Map<number, number>>(new Map());
   selectedPayment = signal<string>('upi');
-  bookingResult   = signal<BookingResponse | null>(null);
+  bookingResult = signal<BookingResponse | null>(null);
 
-  // Groups screen seats into rows and aisle sections (left, center, right)
+  lockTimer = signal<number | null>(null);
+  timerExpired = signal(false);
+  private timerSub: Subscription | null = null;
+  private lockingInProgress = new Set<number>();
+
   rowGroups = computed<SeatRowGroup[]>(() => {
     const data = this.showData();
     if (!data) return [];
@@ -46,40 +48,30 @@ export class SeatSelectionComponent implements OnInit {
     const rowLetters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N'];
     const groups: SeatRowGroup[] = [];
 
-    // Backend stores rows 0-indexed (row 0 = A, row 1 = B, etc.)
+    // Map 0-indexed rows to letters (0 = A, 1 = B...)
     for (let r = 0; r < data.totalRows; r++) {
       const rowSeats = data.seats.filter(s => s.row === r).sort((a, b) => a.column - b.column);
-
-      // Skip rows that have no seats at all (data inconsistency guard)
       if (rowSeats.length === 0) continue;
 
       const label = rowLetters[r] || `R${r + 1}`;
-
-      groups.push({
-        rowLabel: label,
-        seats: rowSeats
-      });
+      groups.push({ rowLabel: label, seats: rowSeats });
     }
 
     return groups;
   });
 
-  // Returns list of seat objects selected by the user
   selectedSeats = computed(() =>
     (this.showData()?.seats ?? []).filter(s => this.selectedSeatIds().has(s.id))
   );
 
-  // Comma-separated seat numbers string (e.g. "A1, A2")
   selectedSeatNumbersStr = computed(() =>
     this.selectedSeats().map(s => s.seatNumber).join(', ')
   );
 
-  // Calculates subtotal for chosen ticket seats
   ticketsTotal = computed(() =>
     this.selectedSeats().reduce((sum, s) => sum + s.price, 0)
   );
 
-  // Calculates subtotal for chosen snacks and beverages
   concessionsTotal = computed(() => {
     let total = 0;
     this.concessionCart().forEach((qty, id) => {
@@ -89,8 +81,15 @@ export class SeatSelectionComponent implements OnInit {
     return total;
   });
 
-  // Calculates grand total (tickets + food & beverages)
   grandTotal = computed(() => this.ticketsTotal() + this.concessionsTotal());
+
+  timerDisplay = computed(() => {
+    const t = this.lockTimer();
+    if (t === null) return null;
+    const m = Math.floor(t / 60).toString().padStart(2, '0');
+    const s = (t % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  });
 
   ngOnInit(): void {
     const showId = Number(this.route.snapshot.paramMap.get('showId'));
@@ -100,33 +99,68 @@ export class SeatSelectionComponent implements OnInit {
     });
   }
 
-  // Toggles seat selection on/off when clicked
+  ngOnDestroy(): void {
+    this.releaseAllLocks();
+    this.stopTimer();
+  }
+
   toggleSeat(seat: SeatInfo): void {
-    if (seat.isBooked) return;
+    if (seat.isBooked || this.lockingInProgress.has(seat.id)) return;
+
     const current = new Set(this.selectedSeatIds());
+
     if (current.has(seat.id)) {
       current.delete(seat.id);
-    } else {
-      current.add(seat.id);
+      this.selectedSeatIds.set(current);
+      this.unlockSeat(seat.id);
+
+      if (current.size === 0) {
+        this.stopTimer();
+        this.lockTimer.set(null);
+      }
+      return;
     }
-    this.selectedSeatIds.set(current);
+
+    this.lockingInProgress.add(seat.id);
+    this.errorMsg.set('');
+
+    const showId = this.showData()!.showId;
+    this.api.lockSeats({ showId, seatIds: [seat.id] }).subscribe({
+      next: res => {
+        this.lockingInProgress.delete(seat.id);
+        if (res.success) {
+          const updated = new Set(this.selectedSeatIds());
+          updated.add(seat.id);
+          this.selectedSeatIds.set(updated);
+          this.startOrResetTimer(res.data.expiresInSeconds);
+        } else {
+          this.errorMsg.set('This seat was just taken by someone else.');
+        }
+      },
+      error: err => {
+        this.lockingInProgress.delete(seat.id);
+        if (err.status === 409) {
+          this.errorMsg.set('This seat is currently selected by another user.');
+        } else {
+          this.errorMsg.set('Could not lock seat. Please try again.');
+        }
+      }
+    });
   }
 
   isSeatSelected(id: number): boolean {
     return this.selectedSeatIds().has(id);
   }
 
-  // Returns CSS class name based on booking status and seat tier.
-  // Backend enum: Standard = 1, Premium = 2, VIP = 3
   seatTypeClass(seat: SeatInfo): string {
     if (seat.isBooked) return 'booked';
+    if (this.lockingInProgress.has(seat.id)) return 'locking';
     if (this.isSeatSelected(seat.id)) return 'selected';
-    if (seat.seatType === 3) return 'vip';       // VIP — top tier
-    if (seat.seatType === 2) return 'premium';   // Premium — mid tier
-    return 'standard';                           // Standard — base tier (was 'available')
+    if (seat.seatType === 3) return 'vip';
+    if (seat.seatType === 2) return 'premium';
+    return 'standard';
   }
 
-  // Maps concession item names to matching visual emojis
   getConcessionIcon(item: ConcessionItem): string {
     const name = item.itemName.toLowerCase();
     if (name.includes('popcorn')) return '🍿';
@@ -138,7 +172,6 @@ export class SeatSelectionComponent implements OnInit {
     return '🥤';
   }
 
-  // Advances to Step 2 (Food & Beverages) after selecting seats
   proceedToFnb(): void {
     if (this.selectedSeatIds().size === 0) return;
     this.errorMsg.set('');
@@ -152,7 +185,6 @@ export class SeatSelectionComponent implements OnInit {
     return this.concessionCart().get(id) ?? 0;
   }
 
-  // Adds or removes items from snack cart
   updateCart(item: ConcessionItem, delta: number): void {
     const cart = new Map(this.concessionCart());
     const current = cart.get(item.id) ?? 0;
@@ -165,7 +197,6 @@ export class SeatSelectionComponent implements OnInit {
     this.concessionCart.set(cart);
   }
 
-  // Advances to Step 3 (Payment)
   proceedToPayment(): void {
     this.step.set(3);
   }
@@ -174,7 +205,6 @@ export class SeatSelectionComponent implements OnInit {
     this.selectedPayment.set(method);
   }
 
-  // Submits complete booking to backend transactional checkout API
   confirmBooking(): void {
     const data = this.showData();
     if (!data) return;
@@ -193,6 +223,7 @@ export class SeatSelectionComponent implements OnInit {
     }).subscribe({
       next: res => {
         if (res.success) {
+          this.stopTimer();
           this.bookingResult.set(res.data);
           this.router.navigate(['/booking/confirmation', res.data.id]);
         } else {
@@ -207,10 +238,55 @@ export class SeatSelectionComponent implements OnInit {
     });
   }
 
-  // Handles back button navigation between workflow steps
   goBack(): void {
     if (this.step() === 2) { this.step.set(1); return; }
     if (this.step() === 3) { this.step.set(2); return; }
+    this.releaseAllLocks();
     this.router.navigate(['../..'], { relativeTo: this.route });
+  }
+
+  private startOrResetTimer(seconds: number): void {
+    this.stopTimer();
+    this.lockTimer.set(seconds);
+
+    this.timerSub = interval(1000).subscribe(() => {
+      const current = this.lockTimer();
+      if (current === null || current <= 0) {
+        this.onTimerExpired();
+        return;
+      }
+      this.lockTimer.set(current - 1);
+    });
+  }
+
+  private stopTimer(): void {
+    this.timerSub?.unsubscribe();
+    this.timerSub = null;
+  }
+
+  private onTimerExpired(): void {
+    this.stopTimer();
+    this.lockTimer.set(null);
+    this.selectedSeatIds.set(new Set());
+    this.concessionCart.set(new Map());
+    this.step.set(1);
+    this.timerExpired.set(true);
+  }
+
+  dismissExpiredModal(): void {
+    this.timerExpired.set(false);
+  }
+
+  private unlockSeat(seatId: number): void {
+    const showId = this.showData()?.showId;
+    if (!showId) return;
+    this.api.unlockSeats({ showId, seatIds: [seatId] }).subscribe();
+  }
+
+  private releaseAllLocks(): void {
+    const showId = this.showData()?.showId;
+    const seatIds = [...this.selectedSeatIds()];
+    if (!showId || seatIds.length === 0) return;
+    this.api.unlockSeats({ showId, seatIds }).subscribe();
   }
 }

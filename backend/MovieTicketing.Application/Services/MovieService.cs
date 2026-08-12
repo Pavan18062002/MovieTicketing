@@ -9,31 +9,62 @@ namespace MovieTicketing.Application.Services;
 public class MovieService : IMovieService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IRedisCacheService _cache;
 
-    public MovieService(IUnitOfWork unitOfWork)
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(10);
+
+    public MovieService(IUnitOfWork unitOfWork, IRedisCacheService cache)
     {
         _unitOfWork = unitOfWork;
+        _cache = cache;
     }
 
     public async Task<ApiResponse<List<MovieResponseDto>>> GetAllAsync()
     {
+        const string key = "movies:all";
+
+        var cached = await _cache.GetAsync<List<MovieResponseDto>>(key);
+        if (cached != null)
+            return ApiResponse<List<MovieResponseDto>>.Ok(cached);
+
         var movies = await _unitOfWork.Movies.GetAllWithShowsAsync();
-        return ApiResponse<List<MovieResponseDto>>.Ok(movies.Select(MapToDto).ToList());
+        var result = movies.Select(MapToDto).ToList();
+        await _cache.SetAsync(key, result, CacheTtl);
+
+        return ApiResponse<List<MovieResponseDto>>.Ok(result);
     }
 
     public async Task<ApiResponse<List<MovieResponseDto>>> GetActiveAsync()
     {
+        const string key = "movies:active";
+
+        var cached = await _cache.GetAsync<List<MovieResponseDto>>(key);
+        if (cached != null)
+            return ApiResponse<List<MovieResponseDto>>.Ok(cached);
+
         var movies = await _unitOfWork.Movies.GetActiveWithShowsAsync();
-        return ApiResponse<List<MovieResponseDto>>.Ok(movies.Select(MapToDto).ToList());
+        var result = movies.Select(MapToDto).ToList();
+        await _cache.SetAsync(key, result, CacheTtl);
+
+        return ApiResponse<List<MovieResponseDto>>.Ok(result);
     }
 
     public async Task<ApiResponse<MovieResponseDto>> GetByIdAsync(int id)
     {
+        var key = $"movies:{id}";
+
+        var cached = await _cache.GetAsync<MovieResponseDto>(key);
+        if (cached != null)
+            return ApiResponse<MovieResponseDto>.Ok(cached);
+
         var movie = await _unitOfWork.Movies.GetWithShowsByIdAsync(id);
         if (movie == null)
             return ApiResponse<MovieResponseDto>.Fail("Movie not found.");
 
-        return ApiResponse<MovieResponseDto>.Ok(MapToDto(movie));
+        var result = MapToDto(movie);
+        await _cache.SetAsync(key, result, CacheTtl);
+
+        return ApiResponse<MovieResponseDto>.Ok(result);
     }
 
     public async Task<ApiResponse<MovieResponseDto>> CreateAsync(CreateMovieDto dto)
@@ -51,6 +82,8 @@ public class MovieService : IMovieService
 
         await _unitOfWork.Movies.AddAsync(movie);
         await _unitOfWork.SaveChangesAsync();
+
+        await _cache.RemoveByPrefixAsync("movies:");
 
         return ApiResponse<MovieResponseDto>.Ok(MapToDto(movie), "Movie created successfully.");
     }
@@ -72,6 +105,8 @@ public class MovieService : IMovieService
         _unitOfWork.Movies.Update(movie);
         await _unitOfWork.SaveChangesAsync();
 
+        await _cache.RemoveByPrefixAsync("movies:");
+
         var updated = await _unitOfWork.Movies.GetWithShowsByIdAsync(id);
         return ApiResponse<MovieResponseDto>.Ok(MapToDto(updated!), "Movie updated successfully.");
     }
@@ -86,6 +121,8 @@ public class MovieService : IMovieService
         movie.UpdatedAt = DateTime.UtcNow;
         _unitOfWork.Movies.Update(movie);
         await _unitOfWork.SaveChangesAsync();
+
+        await _cache.RemoveByPrefixAsync("movies:");
 
         return ApiResponse<bool>.Ok(true, "Movie deleted successfully.");
     }

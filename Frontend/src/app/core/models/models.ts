@@ -171,6 +171,18 @@ export interface CheckoutRequest {
   concessionItems: BookingConcessionItem[];
 }
 
+export interface LockSeatsRequest {
+  showId: number;
+  seatIds: number[];
+}
+
+export interface LockSeatsResponse {
+  success: boolean;
+  message: string;
+  expiresInSeconds: number;
+  lockedSeatIds: number[];
+}
+
 // Booking response
 export interface BookingSeatResponse {
   seatId: number;
