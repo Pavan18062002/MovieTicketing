@@ -15,7 +15,7 @@ export class AuthService {
   readonly isLoggedIn = computed(() => !!this._user());
   readonly isAdmin = computed(() => this._user()?.role === 'Admin');
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(private http: HttpClient, private router: Router) { }
 
   register(payload: RegisterRequest): Observable<ApiResponse<AuthResponse>> {
     return this.http

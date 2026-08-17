@@ -1,98 +1,96 @@
 <div class="page-header">
-      <h1>Manage Screens</h1>
-      @if (editingId()) {
-        <button class="btn-add-new" (click)="cancelEdit()">
-          + Add New Screen
+  <h1>Manage Screens</h1>
+  @if (editingId()) {
+  <button class="btn-add-new" (click)="cancelEdit()">
+    + Add New Screen
+  </button>
+  }
+</div>
+
+<mat-card class="form-card">
+  <mat-card-header>
+    <mat-card-title>{{ editingId() ? 'Edit Screen' : 'Add New Screen' }}</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid">
+      <mat-form-field appearance="outline" class="span-full">
+        <mat-label>Screen Name</mat-label>
+        <input matInput formControlName="name">
+        @if (form.get('name')?.hasError('required')) { <mat-error>Required</mat-error> }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Total Rows</mat-label>
+        <input matInput type="number" formControlName="totalRows">
+        @if (form.get('totalRows')?.hasError('required')) { <mat-error>Required</mat-error> }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Total Columns</mat-label>
+        <input matInput type="number" formControlName="totalColumns">
+        @if (form.get('totalColumns')?.hasError('required')) { <mat-error>Required</mat-error> }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Premium Rows (e.g. 5)</mat-label>
+        <input matInput type="number" formControlName="premiumRows">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>VIP Rows (e.g. 2, or equal to Total Rows for All-VIP)</mat-label>
+        <input matInput type="number" formControlName="vipRows">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Premium Multiplier (e.g. 1.3)</mat-label>
+        <input matInput type="number" step="0.1" formControlName="premiumMultiplier">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>VIP Multiplier (e.g. 1.6)</mat-label>
+        <input matInput type="number" step="0.1" formControlName="vipMultiplier">
+      </mat-form-field>
+
+      <div class="span-full actions-row">
+        <button mat-raised-button color="primary" type="submit" [disabled]="saving()">
+          @if (saving()) { <mat-spinner diameter="18" /> }
+          @else { {{ editingId() ? 'Save Changes' : 'Add Screen' }} }
         </button>
-      }
-    </div>
+        @if (editingId()) {
+        <button mat-button type="button" (click)="cancelEdit()">Cancel</button>
+        }
+      </div>
+    </form>
+  </mat-card-content>
+</mat-card>
 
-    <mat-card class="form-card">
-      <mat-card-header>
-        <mat-card-title>{{ editingId() ? 'Edit Screen' : 'Add New Screen' }}</mat-card-title>
-      </mat-card-header>
-      <mat-card-content>
-        <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid">
-          <mat-form-field appearance="outline" class="span-full">
-            <mat-label>Screen Name</mat-label>
-            <input matInput formControlName="name">
-            @if (form.get('name')?.hasError('required')) { <mat-error>Required</mat-error> }
-          </mat-form-field>
+@if (loading()) {
+<div class="center"><mat-spinner /></div>
+} @else {
+<mat-card>
+  <table mat-table [dataSource]="screens()" class="full-width">
+    <ng-container matColumnDef="name">
+      <th mat-header-cell *matHeaderCellDef>Name</th>
+      <td mat-cell *matCellDef="let s">{{ s.name }}</td>
+    </ng-container>
+    <ng-container matColumnDef="capacity">
+      <th mat-header-cell *matHeaderCellDef>Capacity</th>
+      <td mat-cell *matCellDef="let s">{{ s.capacity }} seats</td>
+    </ng-container>
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef>Actions</th>
+      <td mat-cell *matCellDef="let s">
+        <button mat-icon-button color="primary" (click)="startEdit(s)" title="Edit screen">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button mat-icon-button color="warn" (click)="deleteScreen(s.id)" title="Delete screen">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </td>
+    </ng-container>
 
-          @if (!editingId()) {
-            <mat-form-field appearance="outline">
-              <mat-label>Total Rows</mat-label>
-              <input matInput type="number" formControlName="totalRows">
-              @if (form.get('totalRows')?.hasError('required')) { <mat-error>Required</mat-error> }
-            </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>Total Columns</mat-label>
-              <input matInput type="number" formControlName="totalColumns">
-              @if (form.get('totalColumns')?.hasError('required')) { <mat-error>Required</mat-error> }
-            </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>Premium Rows (e.g. 5)</mat-label>
-              <input matInput type="number" formControlName="premiumRows">
-            </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>VIP Rows (e.g. 2, or equal to Total Rows for All-VIP)</mat-label>
-              <input matInput type="number" formControlName="vipRows">
-            </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>Premium Multiplier (e.g. 1.3)</mat-label>
-              <input matInput type="number" step="0.1" formControlName="premiumMultiplier">
-            </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>VIP Multiplier (e.g. 1.6)</mat-label>
-              <input matInput type="number" step="0.1" formControlName="vipMultiplier">
-            </mat-form-field>
-          }
-
-          <div class="span-full actions-row">
-            <button mat-raised-button color="primary" type="submit" [disabled]="saving()">
-              @if (saving()) { <mat-spinner diameter="18" /> }
-              @else { {{ editingId() ? 'Save Changes' : 'Add Screen' }} }
-            </button>
-            @if (editingId()) {
-              <button mat-button type="button" (click)="cancelEdit()">Cancel</button>
-            }
-          </div>
-        </form>
-      </mat-card-content>
-    </mat-card>
-
-    @if (loading()) {
-      <div class="center"><mat-spinner /></div>
-    } @else {
-      <mat-card>
-        <table mat-table [dataSource]="screens()" class="full-width">
-          <ng-container matColumnDef="name">
-            <th mat-header-cell *matHeaderCellDef>Name</th>
-            <td mat-cell *matCellDef="let s">{{ s.name }}</td>
-          </ng-container>
-          <ng-container matColumnDef="capacity">
-            <th mat-header-cell *matHeaderCellDef>Capacity</th>
-            <td mat-cell *matCellDef="let s">{{ s.capacity }} seats</td>
-          </ng-container>
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Actions</th>
-            <td mat-cell *matCellDef="let s">
-              <button mat-icon-button color="primary" (click)="startEdit(s)" title="Edit screen">
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button mat-icon-button color="warn" (click)="deleteScreen(s.id)" title="Delete screen">
-                <mat-icon>delete</mat-icon>
-              </button>
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="cols"></tr>
-          <tr mat-row *matRowDef="let row; columns: cols;"></tr>
-        </table>
-      </mat-card>
-    }
+    <tr mat-header-row *matHeaderRowDef="cols"></tr>
+    <tr mat-row *matRowDef="let row; columns: cols;"></tr>
+  </table>
+</mat-card>
+}

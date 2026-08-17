@@ -81,6 +81,10 @@ export interface CreateScreenRequest {
 
 export interface UpdateScreenRequest {
   name: string;
+  premiumRows?: number;
+  vipRows?: number;
+  premiumMultiplier?: number;
+  vipMultiplier?: number;
 }
 
 // Shows

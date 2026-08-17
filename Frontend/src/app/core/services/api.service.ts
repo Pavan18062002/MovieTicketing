@@ -15,7 +15,7 @@ import { environment } from '../../../environments/environment';
 export class ApiService {
   private api = environment.apiUrl;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   // catalog
 
@@ -135,5 +135,7 @@ export class ApiService {
 
   getBookingById(id: number): Observable<ApiResponse<BookingResponse>> {
     return this.http.get<ApiResponse<BookingResponse>>(`${this.api}/booking/${id}`);
+  }
+}
   }
 }

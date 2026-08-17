@@ -40,5 +40,6 @@ package-lock.json
 # Optional npm cache
 .npm
 
-# Zip archives
+# Zip archives and bundles
 *.zip
+*.bundle

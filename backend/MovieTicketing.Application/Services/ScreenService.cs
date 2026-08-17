@@ -106,11 +106,48 @@ public class ScreenService : IScreenService
 
     public async Task<ApiResponse<ScreenResponseDto>> UpdateAsync(int id, UpdateScreenDto dto)
     {
-        var screen = await _unitOfWork.Screens.GetByIdAsync(id);
+        var screen = await _unitOfWork.Screens.GetWithSeatsByIdAsync(id);
         if (screen == null)
             return ApiResponse<ScreenResponseDto>.Fail("Screen not found.");
 
         screen.Name = dto.Name;
+        if (dto.PremiumMultiplier.HasValue && dto.PremiumMultiplier.Value > 0)
+            screen.PremiumMultiplier = dto.PremiumMultiplier.Value;
+
+        if (dto.VipMultiplier.HasValue && dto.VipMultiplier.Value > 0)
+            screen.VipMultiplier = dto.VipMultiplier.Value;
+
+        if (dto.PremiumRows.HasValue)
+            screen.PremiumRows = dto.PremiumRows.Value;
+
+        if (dto.VipRows.HasValue)
+            screen.VipRows = dto.VipRows.Value;
+
+        int premRows = screen.PremiumRows;
+        int vipRows = screen.VipRows;
+        if (premRows + vipRows > screen.TotalRows)
+        {
+            premRows = Math.Max(0, screen.TotalRows - vipRows);
+            screen.PremiumRows = premRows;
+        }
+
+        int standardRows = Math.Max(0, screen.TotalRows - (premRows + vipRows));
+
+        if (screen.Seats != null && screen.Seats.Any())
+        {
+            foreach (var seat in screen.Seats)
+            {
+                if (vipRows >= screen.TotalRows)
+                    seat.SeatType = SeatType.VIP;
+                else if (seat.Row < standardRows)
+                    seat.SeatType = SeatType.Standard;
+                else if (seat.Row >= screen.TotalRows - vipRows)
+                    seat.SeatType = SeatType.VIP;
+                else
+                    seat.SeatType = SeatType.Premium;
+            }
+        }
+
         _unitOfWork.Screens.Update(screen);
         await _unitOfWork.SaveChangesAsync();
 

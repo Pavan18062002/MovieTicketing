@@ -30,6 +30,18 @@ public class UpdateScreenDto
 {
     [Required, MaxLength(100)]
     public string Name { get; set; } = string.Empty;
+
+    [Range(0, 500, ErrorMessage = "Premium rows must be between 0 and 500.")]
+    public int? PremiumRows { get; set; }
+
+    [Range(0, 500, ErrorMessage = "VIP rows must be between 0 and 500.")]
+    public int? VipRows { get; set; }
+
+    [Range(1.0, double.MaxValue, ErrorMessage = "Premium multiplier must be at least 1.0.")]
+    public decimal? PremiumMultiplier { get; set; }
+
+    [Range(1.0, double.MaxValue, ErrorMessage = "VIP multiplier must be at least 1.0.")]
+    public decimal? VipMultiplier { get; set; }
 }
 
 public class ScreenResponseDto

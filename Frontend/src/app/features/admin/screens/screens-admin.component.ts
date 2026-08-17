@@ -23,26 +23,26 @@ import { Screen } from '../../../core/models/models';
   styleUrl: './screens-admin.component.css'
 })
 export class ScreensAdminComponent implements OnInit {
-  private api   = inject(ApiService);
-  private fb    = inject(FormBuilder);
+  private api = inject(ApiService);
+  private fb = inject(FormBuilder);
   private snack = inject(MatSnackBar);
 
   @ViewChild(FormGroupDirective) formDirective!: FormGroupDirective;
 
-  screens   = signal<Screen[]>([]);
-  loading   = signal(true);
-  saving    = signal(false);
+  screens = signal<Screen[]>([]);
+  loading = signal(true);
+  saving = signal(false);
   editingId = signal<number | null>(null);
   cols = ['name', 'capacity', 'actions'];
 
   form = this.fb.group({
-    name:              ['', Validators.required],
-    totalRows:         [10, [Validators.required, Validators.min(1)]],
-    totalColumns:      [10, [Validators.required, Validators.min(1)]],
-    premiumRows:       [5, [Validators.required, Validators.min(0)]],
-    vipRows:           [2, [Validators.required, Validators.min(0)]],
+    name: ['', Validators.required],
+    totalRows: [10, [Validators.required, Validators.min(1)]],
+    totalColumns: [10, [Validators.required, Validators.min(1)]],
+    premiumRows: [5, [Validators.required, Validators.min(0)]],
+    vipRows: [2, [Validators.required, Validators.min(0)]],
     premiumMultiplier: [1.3, [Validators.required, Validators.min(1.0)]],
-    vipMultiplier:     [1.6, [Validators.required, Validators.min(1.0)]]
+    vipMultiplier: [1.6, [Validators.required, Validators.min(1.0)]]
   });
 
   ngOnInit(): void { this.load(); }
@@ -58,9 +58,15 @@ export class ScreensAdminComponent implements OnInit {
   startEdit(screen: Screen): void {
     this.editingId.set(screen.id);
     this.form.patchValue({
-      name: screen.name
+      name: screen.name,
+      totalRows: screen.totalRows,
+      totalColumns: screen.totalColumns,
+      premiumRows: screen.premiumRows ?? 5,
+      vipRows: screen.vipRows ?? 2,
+      premiumMultiplier: screen.premiumMultiplier ?? 1.3,
+      vipMultiplier: screen.vipMultiplier ?? 1.6
     });
-    // Rows/Columns cannot be updated after creation in this system, so disable them
+    // Total rows and columns cannot be resized after creation, so keep disabled
     this.form.get('totalRows')!.disable();
     this.form.get('totalColumns')!.disable();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -78,7 +84,15 @@ export class ScreensAdminComponent implements OnInit {
     this.saving.set(true);
 
     if (this.editingId()) {
-      this.api.adminUpdateScreen(this.editingId()!, { name: this.form.value.name! }).subscribe({
+      const payload = {
+        name: this.form.get('name')!.value!,
+        premiumRows: Number(this.form.get('premiumRows')!.value) || 0,
+        vipRows: Number(this.form.get('vipRows')!.value) || 0,
+        premiumMultiplier: Number(this.form.get('premiumMultiplier')!.value) || 1.3,
+        vipMultiplier: Number(this.form.get('vipMultiplier')!.value) || 1.6
+      };
+
+      this.api.adminUpdateScreen(this.editingId()!, payload).subscribe({
         next: res => {
           this.saving.set(false);
           if (res.success) {
