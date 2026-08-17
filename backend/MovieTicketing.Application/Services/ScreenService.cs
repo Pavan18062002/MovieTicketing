@@ -65,7 +65,7 @@ public class ScreenService : IScreenService
 
         for (int row = 0; row < dto.TotalRows; row++)
         {
-            char rowLetter = (char)('A' + (row % 26));
+            string rowLabel = GetRowLabel(row);
             SeatType seatType;
 
             if (vipRows >= dto.TotalRows)
@@ -90,7 +90,7 @@ public class ScreenService : IScreenService
                 seats.Add(new Seat
                 {
                     ScreenId = screen.Id,
-                    SeatNumber = $"{rowLetter}{col + 1}",
+                    SeatNumber = $"{rowLabel}{col + 1}",
                     SeatType = seatType,
                     Row = row,
                     Column = col
@@ -127,6 +127,18 @@ public class ScreenService : IScreenService
         await _unitOfWork.SaveChangesAsync();
 
         return ApiResponse<bool>.Ok(true, "Screen deleted successfully.");
+    }
+
+    private static string GetRowLabel(int rowIndex)
+    {
+        string label = string.Empty;
+        int temp = rowIndex;
+        while (temp >= 0)
+        {
+            label = (char)((temp % 26) + 'A') + label;
+            temp = (temp / 26) - 1;
+        }
+        return label;
     }
 
     private static ScreenResponseDto MapToDto(Screen screen) => new()
