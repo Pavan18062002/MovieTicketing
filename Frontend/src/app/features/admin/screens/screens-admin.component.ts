@@ -36,9 +36,13 @@ export class ScreensAdminComponent implements OnInit {
   cols = ['name', 'capacity', 'actions'];
 
   form = this.fb.group({
-    name:         ['', Validators.required],
-    totalRows:    [10, [Validators.required, Validators.min(1)]],
-    totalColumns: [10, [Validators.required, Validators.min(1)]]
+    name:              ['', Validators.required],
+    totalRows:         [10, [Validators.required, Validators.min(1)]],
+    totalColumns:      [10, [Validators.required, Validators.min(1)]],
+    premiumRows:       [5, [Validators.required, Validators.min(0)]],
+    vipRows:           [2, [Validators.required, Validators.min(0)]],
+    premiumMultiplier: [1.3, [Validators.required, Validators.min(1.0), Validators.max(5.0)]],
+    vipMultiplier:     [1.6, [Validators.required, Validators.min(1.0), Validators.max(5.0)]]
   });
 
   ngOnInit(): void { this.load(); }
@@ -66,7 +70,7 @@ export class ScreensAdminComponent implements OnInit {
     this.editingId.set(null);
     this.form.get('totalRows')!.enable();
     this.form.get('totalColumns')!.enable();
-    this.form.reset({ totalRows: 10, totalColumns: 10 });
+    this.form.reset({ totalRows: 10, totalColumns: 10, premiumRows: 5, vipRows: 2, premiumMultiplier: 1.3, vipMultiplier: 1.6 });
   }
 
   submit(): void {

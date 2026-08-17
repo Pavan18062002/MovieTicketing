@@ -31,6 +31,26 @@
               <input matInput type="number" formControlName="totalColumns">
               @if (form.get('totalColumns')?.hasError('required')) { <mat-error>Required</mat-error> }
             </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Premium Rows (e.g. 5)</mat-label>
+              <input matInput type="number" formControlName="premiumRows">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>VIP Rows (e.g. 2, or equal to Total Rows for All-VIP)</mat-label>
+              <input matInput type="number" formControlName="vipRows">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Premium Multiplier (e.g. 1.3)</mat-label>
+              <input matInput type="number" step="0.1" formControlName="premiumMultiplier">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>VIP Multiplier (e.g. 1.6)</mat-label>
+              <input matInput type="number" step="0.1" formControlName="vipMultiplier">
+            </mat-form-field>
           }
 
           <div class="span-full actions-row">

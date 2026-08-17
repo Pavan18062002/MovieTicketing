@@ -63,12 +63,20 @@ export interface Screen {
   capacity: number;
   totalRows: number;
   totalColumns: number;
+  premiumRows?: number;
+  vipRows?: number;
+  premiumMultiplier?: number;
+  vipMultiplier?: number;
 }
 
 export interface CreateScreenRequest {
   name: string;
   totalRows: number;
   totalColumns: number;
+  premiumRows?: number;
+  vipRows?: number;
+  premiumMultiplier?: number;
+  vipMultiplier?: number;
 }
 
 export interface UpdateScreenRequest {

@@ -18,7 +18,7 @@ public class AdminMoviesController : ControllerBase
         _movieService = movieService;
     }
 
-    /// <summary>Get all movies (including inactive).</summary>
+    /// <summary>Get all movies.</summary>
     [HttpGet]
     public async Task<IActionResult> GetAll()
         => Ok(await _movieService.GetAllAsync());

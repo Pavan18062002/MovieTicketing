@@ -33,11 +33,27 @@ public class ScreenService : IScreenService
 
     public async Task<ApiResponse<ScreenResponseDto>> CreateAsync(CreateScreenDto dto)
     {
+        decimal premMult = dto.PremiumMultiplier > 0 ? dto.PremiumMultiplier : 1.3m;
+        decimal vipMult = dto.VipMultiplier > 0 ? dto.VipMultiplier : 1.6m;
+
+        int premRows = dto.PremiumRows;
+        int vipRows = dto.VipRows;
+        if (premRows + vipRows > dto.TotalRows)
+        {
+            premRows = Math.Max(0, dto.TotalRows - vipRows);
+        }
+
+        int standardRows = Math.Max(0, dto.TotalRows - (premRows + vipRows));
+
         var screen = new Screen
         {
             Name = dto.Name,
             TotalRows = dto.TotalRows,
             TotalColumns = dto.TotalColumns,
+            PremiumRows = premRows,
+            VipRows = vipRows,
+            PremiumMultiplier = premMult,
+            VipMultiplier = vipMult,
             Capacity = dto.TotalRows * dto.TotalColumns,
             CreatedAt = DateTime.UtcNow
         };
@@ -46,22 +62,28 @@ public class ScreenService : IScreenService
         await _unitOfWork.SaveChangesAsync();
 
         var seats = new List<Seat>();
-        int standardRows = (int)Math.Floor(dto.TotalRows * 0.3);
-        int vipRows = Math.Min(2, dto.TotalRows);
-        if (standardRows + vipRows > dto.TotalRows)
-            standardRows = dto.TotalRows - vipRows;
 
         for (int row = 0; row < dto.TotalRows; row++)
         {
-            char rowLetter = (char)('A' + row);
+            char rowLetter = (char)('A' + (row % 26));
             SeatType seatType;
 
-            if (row < standardRows)
-                seatType = SeatType.Standard;
+            if (vipRows >= dto.TotalRows)
+            {
+                seatType = SeatType.VIP; // All-VIP Gold Class screen!
+            }
+            else if (row < standardRows)
+            {
+                seatType = SeatType.Standard; // Remaining front rows
+            }
             else if (row >= dto.TotalRows - vipRows)
-                seatType = SeatType.VIP;
+            {
+                seatType = SeatType.VIP; // Back rows
+            }
             else
-                seatType = SeatType.Premium;
+            {
+                seatType = SeatType.Premium; // Middle Premium rows
+            }
 
             for (int col = 0; col < dto.TotalColumns; col++)
             {
@@ -113,6 +135,10 @@ public class ScreenService : IScreenService
         Name = screen.Name,
         Capacity = screen.Capacity,
         TotalRows = screen.TotalRows,
-        TotalColumns = screen.TotalColumns
+        TotalColumns = screen.TotalColumns,
+        PremiumRows = screen.PremiumRows,
+        VipRows = screen.VipRows,
+        PremiumMultiplier = screen.PremiumMultiplier > 0 ? screen.PremiumMultiplier : 1.3m,
+        VipMultiplier = screen.VipMultiplier > 0 ? screen.VipMultiplier : 1.6m
     };
 }

@@ -4,8 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using MovieTicketing.Application.Interfaces;
 using MovieTicketing.Domain.Entities;
 using MovieTicketing.Domain.Enums;
-public class AppDbContext
-    : IdentityDbContext<ApplicationUser, IdentityRole, string,
+
+public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string,
         IdentityUserClaim<string>,
         IdentityUserRole<string>,
         IdentityUserLogin<string>,

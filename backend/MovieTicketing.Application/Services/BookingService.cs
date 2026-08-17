@@ -129,21 +129,28 @@ public class BookingService : IBookingService
             // Calculate seat prices
             var seatLookup = screen.Seats.ToDictionary(s => s.Id);
             decimal ticketsTotal = 0m;
-            var bookingSeatEntities = new List<(int SeatId, decimal Price)>();
+
+            // Read multipliers from the screen config — same pattern as ShowService.
+            // Falls back to sensible defaults if the screen values are not set.
+            decimal premMult = screen.PremiumMultiplier > 0 ? screen.PremiumMultiplier : 1.3m;
+            decimal vipMult  = screen.VipMultiplier    > 0 ? screen.VipMultiplier    : 1.6m;
+
+            // Tuple now carries SeatNumber and SeatType as snapshots (real-world receipt pattern)
+            var bookingSeatEntities = new List<(int SeatId, string SeatNumber, SeatType SeatType, decimal Price)>();
 
             foreach (var seatId in dto.SeatIds)
             {
                 var seat = seatLookup[seatId];
                 decimal multiplier = seat.SeatType switch
                 {
-                    SeatType.Premium => 1.3m,
-                    SeatType.VIP => 1.6m,
+                    SeatType.Premium  => premMult,
+                    SeatType.VIP      => vipMult,
                     SeatType.Standard => 1.0m,
-                    _ => 1.0m
+                    _                 => 1.0m
                 };
                 decimal price = Math.Round(show.BaseTicketPrice * multiplier, 2);
                 ticketsTotal += price;
-                bookingSeatEntities.Add((seatId, price));
+                bookingSeatEntities.Add((seatId, seat.SeatNumber, seat.SeatType, price));
             }
 
             decimal concessionsTotal = dto.ConcessionItems.Sum(orderItem =>
@@ -165,14 +172,17 @@ public class BookingService : IBookingService
             await _unitOfWork.Bookings.AddAsync(booking);
             await _unitOfWork.SaveChangesAsync();
 
-            foreach (var (seatId, price) in bookingSeatEntities)
+            foreach (var (seatId, seatNumber, seatType, price) in bookingSeatEntities)
             {
                 booking.BookingSeats.Add(new BookingSeat
                 {
                     BookingId = booking.Id,
                     SeatId = seatId,
                     ShowId = dto.ShowId,
-                    Price = price
+                    Price = price,
+                    // Snapshot the seat details at time of purchase
+                    SeatNumber = seatNumber,
+                    SeatType = seatType
                 });
             }
 
@@ -234,9 +244,10 @@ public class BookingService : IBookingService
             return new BookingSeatResponseDto
             {
                 SeatId = bs.SeatId,
-                SeatNumber = seat?.SeatNumber ?? string.Empty,
-                SeatType = seat?.SeatType ?? SeatType.Standard,
-                SeatTypeName = seat?.SeatType.ToString() ?? string.Empty,
+                // Read from snapshot columns — immune to future theater remodels
+                SeatNumber = bs.SeatNumber,
+                SeatType = bs.SeatType,
+                SeatTypeName = bs.SeatType.ToString(),
                 Row = seat?.Row ?? 0,
                 Column = seat?.Column ?? 0,
                 Price = bs.Price
@@ -282,9 +293,10 @@ public class BookingService : IBookingService
         var seats = booking.BookingSeats.Select(bs => new BookingSeatResponseDto
         {
             SeatId = bs.SeatId,
-            SeatNumber = bs.Seat?.SeatNumber ?? string.Empty,
-            SeatType = bs.Seat?.SeatType ?? SeatType.Standard,
-            SeatTypeName = bs.Seat?.SeatType.ToString() ?? string.Empty,
+            // Read from snapshot columns — immune to future theater remodels
+            SeatNumber = bs.SeatNumber,
+            SeatType = bs.SeatType,
+            SeatTypeName = bs.SeatType.ToString(),
             Row = bs.Seat?.Row ?? 0,
             Column = bs.Seat?.Column ?? 0,
             Price = bs.Price

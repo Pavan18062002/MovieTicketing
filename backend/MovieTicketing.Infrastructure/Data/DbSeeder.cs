@@ -18,6 +18,14 @@ public static class DbSeeder
         // 1. Apply pending migrations automatically on startup
         await context.Database.MigrateAsync();
 
+        // 1.1 Ensure Screens table custom columns exist
+        await context.Database.ExecuteSqlRawAsync(@"
+            ALTER TABLE ""Screens"" ADD COLUMN IF NOT EXISTS ""PremiumRows"" integer NOT NULL DEFAULT 5;
+            ALTER TABLE ""Screens"" ADD COLUMN IF NOT EXISTS ""VipRows"" integer NOT NULL DEFAULT 2;
+            ALTER TABLE ""Screens"" ADD COLUMN IF NOT EXISTS ""PremiumMultiplier"" numeric NOT NULL DEFAULT 1.3;
+            ALTER TABLE ""Screens"" ADD COLUMN IF NOT EXISTS ""VipMultiplier"" numeric NOT NULL DEFAULT 1.6;
+        ");
+
         // 2. Seed Roles
         string[] roles = { "Admin", "EndUser" };
         foreach (var role in roles)

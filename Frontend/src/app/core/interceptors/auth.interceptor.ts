@@ -1,13 +1,24 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
+import { catchError, throwError } from 'rxjs';
 
 // Automatically attaches the JWT Bearer token to every outgoing HTTP request.
-// Without this, admin API calls would return 401 Unauthorized.
+// Also catches 401 Unauthorized responses and auto-logs the user out,
+// preventing the broken state where the UI shows "logged in" but all API calls fail.
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const token = inject(AuthService).getToken();
+  const auth = inject(AuthService);
+  const token = auth.getToken();
   if (token) {
     req = req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
   }
-  return next(req);
+  return next(req).pipe(
+    catchError((err: HttpErrorResponse) => {
+      if (err.status === 401) {
+        // Token expired or invalid — force logout so UI state matches reality
+        auth.logout();
+      }
+      return throwError(() => err);
+    })
+  );
 };

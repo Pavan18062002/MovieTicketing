@@ -36,21 +36,35 @@ export class ShowListComponent implements OnInit {
   selectedShowId  = signal<number | null>(null);
   posterSrc       = signal('https://placehold.co/300x450/131326/8b5cf6?text=Loading...');
 
-  // Dynamically generates date tabs for the next 7 days starting from current date
+  // Dynamically generates date tabs ONLY for dates that have available shows
   dateTabs = computed<DateTab[]>(() => {
-    const tabs: DateTab[] = [];
-    const today = new Date();
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      tabs.push({
-        dayName: i === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' }),
+    const allShows = this.shows();
+    if (allShows.length === 0) return [];
+
+    const todayStr = new Date().toDateString();
+
+    // Extract unique dates from active shows
+    const uniqueDatesMap = new Map<string, Date>();
+    allShows.forEach(s => {
+      const d = new Date(s.showTime);
+      const dateKey = d.toDateString();
+      if (!uniqueDatesMap.has(dateKey)) {
+        uniqueDatesMap.set(dateKey, d);
+      }
+    });
+
+    // Sort unique dates chronologically
+    const sortedDates = Array.from(uniqueDatesMap.values()).sort((a, b) => a.getTime() - b.getTime());
+
+    return sortedDates.map(d => {
+      const isToday = d.toDateString() === todayStr;
+      return {
+        dayName: isToday ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' }),
         dateStr: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
         fullDate: d,
-        isToday: i === 0
-      });
-    }
-    return tabs;
+        isToday
+      };
+    });
   });
 
   // Movie metadata computed signals

@@ -41,19 +41,29 @@ export class SeatSelectionComponent implements OnInit, OnDestroy {
   private timerSub: Subscription | null = null;
   private lockingInProgress = new Set<number>();
 
+  // Converts any 0-indexed row number into standard cinema row letters (0 -> A ... 25 -> Z, 26 -> AA, 27 -> AB ...)
+  getRowLabel(rowIndex: number): string {
+    let label = '';
+    let temp = rowIndex;
+    while (temp >= 0) {
+      label = String.fromCharCode((temp % 26) + 65) + label;
+      temp = Math.floor(temp / 26) - 1;
+    }
+    return label;
+  }
+
   rowGroups = computed<SeatRowGroup[]>(() => {
     const data = this.showData();
     if (!data) return [];
 
-    const rowLetters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N'];
     const groups: SeatRowGroup[] = [];
 
-    // Map 0-indexed rows to letters (0 = A, 1 = B...)
+    // Map 0-indexed rows to letters (0 = A, 1 = B ... 25 = Z, 26 = AA...)
     for (let r = 0; r < data.totalRows; r++) {
       const rowSeats = data.seats.filter(s => s.row === r).sort((a, b) => a.column - b.column);
       if (rowSeats.length === 0) continue;
 
-      const label = rowLetters[r] || `R${r + 1}`;
+      const label = this.getRowLabel(r);
       groups.push({ rowLabel: label, seats: rowSeats });
     }
 

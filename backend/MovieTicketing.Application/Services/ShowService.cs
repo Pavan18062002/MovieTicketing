@@ -154,16 +154,25 @@ public class ShowService : IShowService
 
         var bookedSeatIds = await _unitOfWork.Bookings.GetBookedSeatIdsForShowAsync(showId);
 
-        var seats = screen.Seats.Select(seat =>
+        var seats = new List<SeatInfoDto>();
+        foreach (var seat in screen.Seats)
         {
+            decimal premMult = screen.PremiumMultiplier > 0 ? screen.PremiumMultiplier : 1.3m;
+            decimal vipMult = screen.VipMultiplier > 0 ? screen.VipMultiplier : 1.6m;
+
             decimal multiplier = seat.SeatType switch
             {
-                SeatType.Premium  => 1.3m,
-                SeatType.VIP      => 1.6m,
-                SeatType.Standard => 1.0m
+                SeatType.Premium  => premMult,
+                SeatType.VIP      => vipMult,
+                SeatType.Standard => 1.0m,
+                _                 => 1.0m
             };
 
-            return new SeatInfoDto
+            bool isBookedInDb = bookedSeatIds.Contains(seat.Id);
+            var lockOwner = await _cache.GetSeatLockOwnerAsync(showId, seat.Id);
+            bool isLockedInCache = !string.IsNullOrEmpty(lockOwner);
+
+            seats.Add(new SeatInfoDto
             {
                 Id          = seat.Id,
                 SeatNumber  = seat.SeatNumber,
@@ -172,9 +181,9 @@ public class ShowService : IShowService
                 Row         = seat.Row,
                 Column      = seat.Column,
                 Price       = Math.Round(show.BaseTicketPrice * multiplier, 2),
-                IsBooked    = bookedSeatIds.Contains(seat.Id)
-            };
-        }).ToList();
+                IsBooked    = isBookedInDb || isLockedInCache
+            });
+        }
 
         var result = new ShowSeatsResponseDto
         {
