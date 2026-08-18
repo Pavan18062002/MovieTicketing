@@ -1,0 +1,237 @@
+.super-admin-container {
+  padding: 2rem;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0 0 0.3rem 0;
+}
+
+.subtitle {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.btn-create {
+  background: linear-gradient(135deg, #7c3aed, #6366f1) !important;
+  color: white !important;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+}
+
+/* Stats Cards */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: #131326;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-icon.users { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+.stat-icon.admins { background: rgba(124, 58, 237, 0.15); color: #a78bfa; }
+.stat-icon.theaters { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+.stat-icon.revenue { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+
+.stat-val {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.stat-lbl {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+/* Form Card */
+.form-card {
+  background: #131326;
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  padding: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.actions-row {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.btn-submit {
+  background: linear-gradient(135deg, #7c3aed, #6366f1) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.6rem 1.4rem;
+}
+
+.btn-cancel {
+  color: #94a3b8 !important;
+  font-weight: 500;
+}
+
+/* Table Card */
+.table-card {
+  background: #131326;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.full-width {
+  width: 100%;
+  background: transparent;
+}
+
+.user-name {
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.branches-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.theaters-tag {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.btn-branch-sm {
+  background: rgba(124, 58, 237, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #c084fc;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-branch-sm:hover {
+  background: rgba(124, 58, 237, 0.4);
+  color: #ffffff;
+}
+
+.branch-card {
+  border-color: rgba(52, 211, 153, 0.4) !important;
+}
+
+.unassigned-tag {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.na-tag {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.theaters-count {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+.role-pill {
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.role-pill.super { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.4); }
+.role-pill.admin { background: rgba(124, 58, 237, 0.2); color: #c084fc; border: 1px solid rgba(124, 58, 237, 0.4); }
+.role-pill.user { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
+
+.action-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.role-select {
+  background: #1e1e38;
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.role-select:focus {
+  border-color: #7c3aed;
+}
+
+.protected-badge {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.center-spinner {
+  display: flex;
+  justify-content: center;
+  padding: 3rem;
+}

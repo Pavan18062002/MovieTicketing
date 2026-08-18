@@ -3,11 +3,13 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
   ApiResponse, Movie, CreateMovieRequest, UpdateMovieRequest,
+  Theater, CreateTheaterRequest, UpdateTheaterRequest,
   Screen, CreateScreenRequest, UpdateScreenRequest,
   Show, CreateShowRequest, UpdateShowRequest,
   ConcessionItem, CreateConcessionRequest, UpdateConcessionRequest,
   ShowSeatsResponse, CheckoutRequest, BookingResponse,
-  LockSeatsRequest, LockSeatsResponse
+  LockSeatsRequest, LockSeatsResponse,
+  UserDto, CreateAdminRequest, UpdateUserRoleRequest, SystemStats
 } from '../models/models';
 import { environment } from '../../../environments/environment';
 
@@ -17,7 +19,7 @@ export class ApiService {
 
   constructor(private http: HttpClient) { }
 
-  // catalog
+  // ── CATALOG (PUBLIC) ──────────────────────────────────────────────────────
 
   getActiveMovies(): Observable<ApiResponse<Movie[]>> {
     return this.http.get<ApiResponse<Movie[]>>(`${this.api}/catalog/movies`);
@@ -35,11 +37,56 @@ export class ApiService {
     return this.http.get<ApiResponse<ShowSeatsResponse>>(`${this.api}/catalog/shows/${showId}/seats`);
   }
 
-  getAvailableConcessions(): Observable<ApiResponse<ConcessionItem[]>> {
-    return this.http.get<ApiResponse<ConcessionItem[]>>(`${this.api}/catalog/concessions`);
+  getAvailableConcessions(theaterId?: number): Observable<ApiResponse<ConcessionItem[]>> {
+    const url = theaterId ? `${this.api}/catalog/concessions?theaterId=${theaterId}` : `${this.api}/catalog/concessions`;
+    return this.http.get<ApiResponse<ConcessionItem[]>>(url);
   }
 
-  // admin - movies
+  // ── SUPER ADMIN ──────────────────────────────────────────────────────────
+
+  superAdminGetUsers(): Observable<ApiResponse<UserDto[]>> {
+    return this.http.get<ApiResponse<UserDto[]>>(`${this.api}/superadmin/users`);
+  }
+
+  superAdminCreateAdmin(payload: CreateAdminRequest): Observable<ApiResponse<UserDto>> {
+    return this.http.post<ApiResponse<UserDto>>(`${this.api}/superadmin/admins`, payload);
+  }
+
+  superAdminAddTheaterToAdmin(userId: string, payload: CreateTheaterRequest): Observable<ApiResponse<Theater>> {
+    return this.http.post<ApiResponse<Theater>>(`${this.api}/superadmin/users/${userId}/theaters`, payload);
+  }
+
+  superAdminUpdateUserRole(userId: string, payload: UpdateUserRoleRequest): Observable<ApiResponse<UserDto>> {
+    return this.http.put<ApiResponse<UserDto>>(`${this.api}/superadmin/users/${userId}/role`, payload);
+  }
+
+  superAdminDeleteUser(userId: string): Observable<ApiResponse<boolean>> {
+    return this.http.delete<ApiResponse<boolean>>(`${this.api}/superadmin/users/${userId}`);
+  }
+
+  superAdminGetStats(): Observable<ApiResponse<SystemStats>> {
+    return this.http.get<ApiResponse<SystemStats>>(`${this.api}/superadmin/stats`);
+  }
+
+  // ── ADMIN - THEATERS ─────────────────────────────────────────────────────
+
+  adminGetTheaters(): Observable<ApiResponse<Theater[]>> {
+    return this.http.get<ApiResponse<Theater[]>>(`${this.api}/admin/theaters`);
+  }
+
+  adminCreateTheater(payload: CreateTheaterRequest): Observable<ApiResponse<Theater>> {
+    return this.http.post<ApiResponse<Theater>>(`${this.api}/admin/theaters`, payload);
+  }
+
+  adminUpdateTheater(id: number, payload: UpdateTheaterRequest): Observable<ApiResponse<Theater>> {
+    return this.http.put<ApiResponse<Theater>>(`${this.api}/admin/theaters/${id}`, payload);
+  }
+
+  adminDeleteTheater(id: number): Observable<ApiResponse<boolean>> {
+    return this.http.delete<ApiResponse<boolean>>(`${this.api}/admin/theaters/${id}`);
+  }
+
+  // ── ADMIN - MOVIES ───────────────────────────────────────────────────────
 
   adminGetMovies(): Observable<ApiResponse<Movie[]>> {
     return this.http.get<ApiResponse<Movie[]>>(`${this.api}/admin/movies`);
@@ -57,7 +104,7 @@ export class ApiService {
     return this.http.delete<ApiResponse<boolean>>(`${this.api}/admin/movies/${id}`);
   }
 
-  // admin - screens
+  // ── ADMIN - SCREENS ──────────────────────────────────────────────────────
 
   adminGetScreens(): Observable<ApiResponse<Screen[]>> {
     return this.http.get<ApiResponse<Screen[]>>(`${this.api}/admin/screens`);
@@ -75,7 +122,7 @@ export class ApiService {
     return this.http.delete<ApiResponse<boolean>>(`${this.api}/admin/screens/${id}`);
   }
 
-  // admin - shows
+  // ── ADMIN - SHOWS ────────────────────────────────────────────────────────
 
   adminGetShows(): Observable<ApiResponse<Show[]>> {
     return this.http.get<ApiResponse<Show[]>>(`${this.api}/admin/shows`);
@@ -93,10 +140,11 @@ export class ApiService {
     return this.http.delete<ApiResponse<boolean>>(`${this.api}/admin/shows/${id}`);
   }
 
-  // admin - concessions
+  // ── ADMIN - CONCESSIONS ──────────────────────────────────────────────────
 
-  adminGetConcessions(): Observable<ApiResponse<ConcessionItem[]>> {
-    return this.http.get<ApiResponse<ConcessionItem[]>>(`${this.api}/admin/concessions`);
+  adminGetConcessions(theaterId?: number): Observable<ApiResponse<ConcessionItem[]>> {
+    const url = theaterId ? `${this.api}/admin/concessions?theaterId=${theaterId}` : `${this.api}/admin/concessions`;
+    return this.http.get<ApiResponse<ConcessionItem[]>>(url);
   }
 
   adminCreateConcession(payload: CreateConcessionRequest): Observable<ApiResponse<ConcessionItem>> {
@@ -115,7 +163,7 @@ export class ApiService {
     return this.http.delete<ApiResponse<boolean>>(`${this.api}/admin/concessions/${id}`);
   }
 
-  // booking
+  // ── BOOKING ──────────────────────────────────────────────────────────────
 
   lockSeats(payload: LockSeatsRequest): Observable<ApiResponse<LockSeatsResponse>> {
     return this.http.post<ApiResponse<LockSeatsResponse>>(`${this.api}/booking/lock-seats`, payload);

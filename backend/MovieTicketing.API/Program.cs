@@ -112,6 +112,8 @@ builder.Services.AddHostedService<MovieTicketing.Infrastructure.BackgroundServic
 
 builder.Services.AddScoped<MovieTicketing.Application.Interfaces.Repositories.IUnitOfWork, MovieTicketing.Infrastructure.Repositories.UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITheaterService, TheaterService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IMovieService, MovieService>();
 builder.Services.AddScoped<IScreenService, ScreenService>();
 builder.Services.AddScoped<IShowService, ShowService>();

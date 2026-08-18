@@ -1,17 +1,47 @@
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-    .page-header h1 { margin: 0; color: #1e293b; font-weight: 800; }
-    .btn-add-new {
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      color: #fff; border: none; border-radius: 8px;
-      padding: 9px 20px; font-size: 0.88rem; font-weight: 600;
-      cursor: pointer; font-family: inherit; transition: all 0.2s;
-      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
-    }
-    .btn-add-new:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(99,102,241,0.45); }
-    .form-card { margin-bottom: 24px; border-radius: 12px; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
-    .span-full { grid-column: 1 / -1; }
-    .actions-row { display: flex; gap: 12px; align-items: center; }
-    .full-width { width: 100%; }
-    .center { display: flex; justify-content: center; padding: 32px; }
-    mat-form-field { width: 100%; }
+.page-header h1 { margin: 0; color: #f1f5f9; font-weight: 800; }
+.btn-add-new {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff; border: none; border-radius: 8px;
+  padding: 9px 20px; font-size: 0.88rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+}
+.btn-add-new:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(99,102,241,0.45); }
+.form-card { margin-bottom: 24px; border-radius: 12px; background: #131326; border: 1px solid rgba(255,255,255,0.08); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-top: 1rem; }
+.span-full { grid-column: 1 / -1; }
+.actions-row { display: flex; gap: 12px; align-items: center; }
+.full-width { width: 100%; background: transparent; }
+.center { display: flex; justify-content: center; padding: 32px; }
+mat-form-field { width: 100%; }
+
+.screen-name {
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.theater-tag {
+  background: rgba(124, 58, 237, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.pricing-tags {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tag {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.tag.prem { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+.tag.vip { background: rgba(234, 179, 8, 0.2); color: #facc15; }

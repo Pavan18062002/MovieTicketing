@@ -8,6 +8,7 @@ namespace MovieTicketing.Application.Interfaces;
 public interface IAppDbContext
 {
     DbSet<Movie> Movies { get; }
+    DbSet<Theater> Theaters { get; }
     DbSet<Screen> Screens { get; }
     DbSet<Seat> Seats { get; }
     DbSet<Show> Shows { get; }

@@ -55,7 +55,7 @@ public class RealTimeNotificationService : IRealTimeNotificationService
     // Push low stock notification to all connected admins
     public async Task SendLowStockAlertAsync(int concessionItemId, string itemName, string itemSize, int currentStock, int baseStock)
     {
-        await _adminHub.Clients.Group(AdminHub.AdminGroupName).SendAsync("LowStockAlert", new
+        await _adminHub.Clients.All.SendAsync("LowStockAlert", new
         {
             ConcessionItemId = concessionItemId,
             ItemName = itemName,

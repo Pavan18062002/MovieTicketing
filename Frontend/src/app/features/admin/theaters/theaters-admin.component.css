@@ -1,0 +1,88 @@
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.page-header h1 {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0;
+}
+
+.btn-add-new {
+  background: #7c3aed;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.form-card {
+  background: #131326;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  padding: 0.5rem 1rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.span-full {
+  grid-column: 1 / -1;
+}
+
+.actions-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.table-card {
+  background: #131326;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.full-width {
+  width: 100%;
+  background: transparent;
+}
+
+.theater-name {
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.badge-screen {
+  background: rgba(124, 58, 237, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.owner-tag {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+.center-spinner {
+  display: flex;
+  justify-content: center;
+  padding: 3rem;
+}

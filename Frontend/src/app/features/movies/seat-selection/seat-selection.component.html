@@ -1,102 +1,79 @@
 @if (loading()) {
-  <!-- Loading spinner while fetching show and seat details -->
   <div class="spinner-wrap"><mat-spinner diameter="52" /></div>
 } @else if (showData()) {
 
-  <div class="seat-selection-page">
+  <div class="booking-flow-page">
 
-    <!-- Timer expiry modal — shown when 5-min lock period has passed -->
-    @if (timerExpired()) {
-      <div class="expiry-overlay">
-        <div class="expiry-modal">
-          <div class="expiry-icon">⏰</div>
-          <h2>Your seat hold has expired</h2>
-          <p>The 5-minute reservation window has passed and your seats have been released. Other users can now select them.</p>
-          <button class="btn-primary" (click)="dismissExpiredModal()">Reselect Seats</button>
-        </div>
-      </div>
-    }
-    
-    <!-- Top Navigation & Step Header -->
-    <div class="top-nav-bar">
-      <button class="back-link-btn" (click)="goBack()">
+    <!-- Top Navigation Header -->
+    <header class="booking-top-bar">
+      <button class="back-btn" (click)="goBack()">
         <mat-icon>arrow_back</mat-icon>
       </button>
-      <h1 class="page-title">
-        @if (step() === 1) { Select Seats }
-        @if (step() === 2) { Food & Beverages }
-        @if (step() === 3) { Payment }
-      </h1>
-      <div style="width: 42px;"></div>
-    </div>
 
-    <!-- STEP 1: Interactive Seat Matrix -->
-    @if (step() === 1) {
-      
-      <!-- Seat Status Legend -->
-      <div class="legend-bar">
-        <div class="legend-item"><span class="box-dot standard"></span> Standard</div>
-        <div class="legend-item"><span class="box-dot premium"></span> Premium</div>
-        <div class="legend-item"><span class="box-dot vip"></span> VIP</div>
-        <div class="legend-item"><span class="box-dot selected"></span> Selected</div>
-        <div class="legend-item"><span class="box-dot booked"></span> Booked</div>
+      <div class="show-meta-info">
+        <h1 class="movie-title">{{ showData()!.movieTitle }}</h1>
+        <div class="meta-subline">
+          <span>{{ showData()!.showTime | date:'EEE, d MMM, hh:mm a' }}</span>
+          <span class="dot">•</span>
+          <span>{{ showData()!.screenName }} {{ showData()!.theaterName ? '(' + showData()!.theaterName + ')' : '' }}</span>
+        </div>
       </div>
 
-      <!-- Screen Direction Curve -->
-      <div class="screen-container">
-        <div class="screen-curve"></div>
-        <span class="screen-label">SCREEN THIS WAY</span>
-      </div>
-
-      <!-- Seat Rows and Aisles -->
-      <div class="seat-matrix-wrapper">
-        @for (row of rowGroups(); track row.rowLabel) {
-          <div class="seat-row">
-            <span class="row-label">{{ row.rowLabel }}</span>
-            
-            <!-- Continuous Seat Row -->
-            <div class="aisle-group">
-              @for (seat of row.seats; track seat.id) {
-                <button
-                  class="seat-box"
-                  [class]="seatTypeClass(seat)"
-                  [disabled]="seat.isBooked"
-                  [title]="seat.seatNumber + ' — ₹' + seat.price"
-                  (click)="toggleSeat(seat)">
-                  {{ seat.column + 1 }}
-                </button>
-              }
-            </div>
-
-            <span class="row-label">{{ row.rowLabel }}</span>
-          </div>
-        }
-      </div>
-
-      <!-- Lock timer — shown when user has seats held in Redis -->
+      <!-- Live 5-Minute Seat Lock Timer -->
       @if (timerDisplay()) {
-        <div class="lock-timer-bar" [class.expiring]="lockTimer()! <= 60">
+        <div class="lock-timer-badge" [class.urgent]="(lockTimer() ?? 0) <= 60">
           <mat-icon>timer</mat-icon>
-          <span>Seats held for <strong>{{ timerDisplay() }}</strong> — complete booking before time runs out</span>
+          <span>{{ timerDisplay() }}</span>
         </div>
       }
+    </header>
 
-      <!-- Seat conflict / lock error message -->
-      @if (errorMsg()) {
-        <div class="seat-error-banner">
-          <mat-icon>error_outline</mat-icon>
-          <span>{{ errorMsg() }}</span>
+    <!-- STEP 1: Interactive Seat Layout -->
+    @if (step() === 1) {
+
+      <div class="seat-selection-main">
+        <div class="screen-indicator">
+          <div class="screen-curve"></div>
+          <span class="screen-text">All eyes this way please!</span>
         </div>
-      }
 
-      <!-- Bottom Summary & Proceed Bar -->
-      <div class="bottom-bar">
-        <div class="bar-summary">
-          @if (selectedSeats().length === 0) {
-            <span class="no-selection-hint">Tap on seats to select</span>
-          } @else {
-            <div class="seats-info-col">
-              <span class="seats-count-text">{{ selectedSeats().length }} Seat{{ selectedSeats().length > 1 ? 's' : '' }} Selected</span>
+        <div class="seat-map-wrapper">
+          <div class="seat-map">
+            @for (grp of rowGroups(); track grp.rowLabel) {
+              <div class="seat-row">
+                <span class="row-letter">{{ grp.rowLabel }}</span>
+                <div class="seat-row-seats">
+                  @for (s of grp.seats; track s.id) {
+                    <button class="seat-box" [ngClass]="seatTypeClass(s)"
+                      [disabled]="s.isBooked || otherUserLockedSeatIds().has(s.id)"
+                      (click)="toggleSeat(s)" [title]="s.seatNumber + ' - ₹' + s.price">
+                      {{ s.seatNumber }}
+                    </button>
+                  }
+                </div>
+                <span class="row-letter">{{ grp.rowLabel }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Seating Legend -->
+        <div class="seat-legend">
+          <div class="legend-item"><div class="legend-box available"></div><span>Available</span></div>
+          <div class="legend-item"><div class="legend-box selected"></div><span>Selected</span></div>
+          <div class="legend-item"><div class="legend-box premium"></div><span>Premium</span></div>
+          <div class="legend-item"><div class="legend-box vip"></div><span>VIP</span></div>
+          <div class="legend-item"><div class="legend-box booked"></div><span>Sold</span></div>
+          <div class="legend-item"><div class="legend-box locked-other"></div><span>Reserved by other</span></div>
+        </div>
+      </div>
+
+      <!-- Bottom Sticky Selection Bar -->
+      <div class="bottom-checkout-bar" [class.visible]="selectedSeatIds().size > 0">
+        <div class="bar-info">
+          @if (selectedSeatIds().size > 0) {
+            <div class="selected-seats-summary">
+              <span class="seats-count-label">{{ selectedSeatIds().size }} Seat(s):</span>
               <span class="seats-list-text">{{ selectedSeatNumbersStr() }}</span>
             </div>
           }
@@ -122,6 +99,7 @@
         <!-- Snack Selection Items -->
         <div class="fnb-left-side">
           <h2>Food & Beverages</h2>
+          <p class="fnb-subtitle">Fresh snacks and drinks prepared for your showtime</p>
           
           <div class="fnb-list">
             @for (item of concessions(); track item.id) {
@@ -174,60 +152,148 @@
           </div>
 
           <button class="btn-primary add-booking-btn" (click)="proceedToPayment()">
-            Add to Booking
+            Proceed to Payment
           </button>
         </div>
 
       </div>
     }
 
-    <!-- STEP 3: Payment Options -->
+    <!-- STEP 3: Interactive Payment Gateway -->
     @if (step() === 3) {
       <div class="payment-container">
         
         <div class="payment-card">
-          <h2>Payment</h2>
+          <div class="payment-header">
+            <h2>Payment Gateway</h2>
+            <div class="secure-badge">
+              <mat-icon>lock</mat-icon> 256-Bit SSL Encrypted
+            </div>
+          </div>
           
           <!-- Payment Method Choices -->
           <div class="payment-methods-list">
             
+            <!-- UPI Option -->
             <div class="pay-method-option" [class.selected]="selectedPayment() === 'upi'" (click)="setPaymentMethod('upi')">
-              <div class="radio-circle">
-                <div class="radio-inner"></div>
+              <div class="method-row-header">
+                <div class="radio-circle">
+                  <div class="radio-inner"></div>
+                </div>
+                <span class="method-title">UPI / QR Code</span>
+                <div class="method-icons">
+                  <span class="pay-badge gpay">GPay</span>
+                  <span class="pay-badge phonepe">PhonePe</span>
+                  <span class="pay-badge paytm">Paytm</span>
+                </div>
               </div>
-              <span class="method-title">UPI</span>
-              <div class="method-icons">
-                <span class="pay-badge gpay">GPay</span>
-                <span class="pay-badge phonepe">PhonePe</span>
-              </div>
+
+              @if (selectedPayment() === 'upi') {
+                <div class="pay-subpanel" (click)="$event.stopPropagation()">
+                  <div class="upi-tabs">
+                    <button type="button" class="tab-btn" [class.active]="upiMode() === 'id'" (click)="upiMode.set('id')">Enter UPI ID</button>
+                    <button type="button" class="tab-btn" [class.active]="upiMode() === 'qr'" (click)="upiMode.set('qr')">Scan QR Code</button>
+                  </div>
+
+                  @if (upiMode() === 'id') {
+                    <div class="upi-input-box">
+                      <input type="text" class="custom-pay-input" [value]="upiId()" (input)="upiId.set($any($event.target).value)" (focus)="errorMsg.set('')">
+                      @if (upiId().includes('@') && upiId().trim().length >= 5) {
+                        <span class="verified-tag">✓ Verified</span>
+                      }
+                    </div>
+                  } @else {
+                    <div class="qr-box">
+                      <div class="qr-code-mock">
+                        <div class="qr-pattern"></div>
+                      </div>
+                      <span class="qr-caption">Scan with GPay, PhonePe, Paytm or any UPI App</span>
+                    </div>
+                  }
+                </div>
+              }
             </div>
 
+            <!-- Credit / Debit Card Option -->
             <div class="pay-method-option" [class.selected]="selectedPayment() === 'card'" (click)="setPaymentMethod('card')">
-              <div class="radio-circle">
-                <div class="radio-inner"></div>
+              <div class="method-row-header">
+                <div class="radio-circle">
+                  <div class="radio-inner"></div>
+                </div>
+                <span class="method-title">Credit / Debit Card</span>
+                <div class="method-icons">
+                  <span class="pay-badge card-visa">VISA</span>
+                  <span class="pay-badge card-mc">MC</span>
+                  <span class="pay-badge card-rupay">RuPay</span>
+                </div>
               </div>
-              <span class="method-title">Credit / Debit Card</span>
+
+              @if (selectedPayment() === 'card') {
+                <div class="pay-subpanel" (click)="$event.stopPropagation()">
+                  <div class="card-form-grid">
+                    <div class="span-2">
+                      <label class="pay-lbl">Card Number</label>
+                      <input type="text" class="custom-pay-input" [value]="cardNumber()" (input)="cardNumber.set($any($event.target).value)">
+                    </div>
+                    <div>
+                      <label class="pay-lbl">Expiry (MM/YY)</label>
+                      <input type="text" class="custom-pay-input" [value]="cardExpiry()" (input)="cardExpiry.set($any($event.target).value)">
+                    </div>
+                    <div>
+                      <label class="pay-lbl">CVV</label>
+                      <input type="password" class="custom-pay-input" [value]="cardCvv()" (input)="cardCvv.set($any($event.target).value)">
+                    </div>
+                    <div class="span-2">
+                      <label class="pay-lbl">Cardholder Name</label>
+                      <input type="text" class="custom-pay-input" [value]="cardName()" (input)="cardName.set($any($event.target).value)">
+                    </div>
+                  </div>
+                </div>
+              }
             </div>
 
+            <!-- Net Banking Option -->
             <div class="pay-method-option" [class.selected]="selectedPayment() === 'netbanking'" (click)="setPaymentMethod('netbanking')">
-              <div class="radio-circle">
-                <div class="radio-inner"></div>
+              <div class="method-row-header">
+                <div class="radio-circle">
+                  <div class="radio-inner"></div>
+                </div>
+                <span class="method-title">Net Banking</span>
               </div>
-              <span class="method-title">Net Banking</span>
+
+              @if (selectedPayment() === 'netbanking') {
+                <div class="pay-subpanel" (click)="$event.stopPropagation()">
+                  <div class="banks-grid">
+                    @for (b of ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'Kotak']; track b) {
+                      <button type="button" class="bank-pill" [class.active]="selectedBank() === b" (click)="selectedBank.set(b)">
+                        🏛️ {{ b }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
             </div>
 
+            <!-- Wallets Option -->
             <div class="pay-method-option" [class.selected]="selectedPayment() === 'wallets'" (click)="setPaymentMethod('wallets')">
-              <div class="radio-circle">
-                <div class="radio-inner"></div>
+              <div class="method-row-header">
+                <div class="radio-circle">
+                  <div class="radio-inner"></div>
+                </div>
+                <span class="method-title">Wallets & Pay Later</span>
               </div>
-              <span class="method-title">Wallets</span>
-            </div>
 
-            <div class="pay-method-option" [class.selected]="selectedPayment() === 'paylater'" (click)="setPaymentMethod('paylater')">
-              <div class="radio-circle">
-                <div class="radio-inner"></div>
-              </div>
-              <span class="method-title">Pay Later</span>
+              @if (selectedPayment() === 'wallets') {
+                <div class="pay-subpanel" (click)="$event.stopPropagation()">
+                  <div class="banks-grid">
+                    @for (w of ['Paytm Wallet', 'Amazon Pay', 'Mobikwik', 'Simpl Pay Later']; track w) {
+                      <button type="button" class="bank-pill" [class.active]="selectedWallet() === w" (click)="selectedWallet.set(w)">
+                        👛 {{ w }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
             </div>
 
           </div>
@@ -244,17 +310,34 @@
               <span class="payable-val">₹{{ grandTotal() | number:'1.0-0' }}</span>
             </div>
 
-            <button class="btn-primary pay-now-btn" [disabled]="submitting()" (click)="confirmBooking()">
-              @if (submitting()) {
+            <button class="btn-primary pay-now-btn" [disabled]="submitting() || gatewayProcessing()" (click)="confirmBooking()">
+              @if (gatewayProcessing() || submitting()) {
                 <mat-spinner diameter="20" /> Processing...
               } @else {
-                Pay Now
+                Pay ₹{{ grandTotal() | number:'1.0-0' }} Now
               }
             </button>
           </div>
 
         </div>
 
+      </div>
+    }
+
+    <!-- Payment Gateway Live Processing Overlay Modal -->
+    @if (gatewayProcessing()) {
+      <div class="gateway-modal-overlay">
+        <div class="gateway-box animate-scale-up">
+          <div class="gateway-spinner">
+            <mat-spinner diameter="54" />
+          </div>
+          <h3 class="gw-title">Processing Payment</h3>
+          <p class="gw-status">{{ gatewayStatus() }}</p>
+          <div class="gw-footer">
+            <mat-icon>verified_user</mat-icon>
+            <span>Do not refresh or close the page</span>
+          </div>
+        </div>
       </div>
     }
 

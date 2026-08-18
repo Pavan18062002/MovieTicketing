@@ -11,6 +11,7 @@ public class UnitOfWork : IUnitOfWork
     private readonly AppDbContext _context;
 
     public IMovieRepository Movies { get; }
+    public ITheaterRepository Theaters { get; }
     public IShowRepository Shows { get; }
     public IScreenRepository Screens { get; }
     public IConcessionRepository Concessions { get; }
@@ -20,6 +21,7 @@ public class UnitOfWork : IUnitOfWork
     {
         _context = context;
         Movies = new MovieRepository(_context);
+        Theaters = new TheaterRepository(_context);
         Shows = new ShowRepository(_context);
         Screens = new ScreenRepository(_context);
         Concessions = new ConcessionRepository(_context);

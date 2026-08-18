@@ -40,6 +40,7 @@ public class ShowRepository : GenericRepository<Show>, IShowRepository
             .AsNoTracking()
             .Include(s => s.Movie)
             .Include(s => s.Screen)
+                .ThenInclude(sc => sc!.Theater)
             .OrderByDescending(s => s.ShowTime)
             .ToListAsync();
     }

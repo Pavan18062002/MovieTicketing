@@ -11,13 +11,46 @@ public class ConcessionRepository : GenericRepository<ConcessionItem>, IConcessi
     {
     }
 
-    public async Task<List<ConcessionItem>> GetAvailableAsync()
+    public async Task<List<ConcessionItem>> GetAvailableAsync(int? theaterId = null)
     {
-        return await _dbSet
+        var query = _dbSet
             .AsNoTracking()
-            .Where(c => c.IsAvailable && c.StockCount > 0)
+            .Include(c => c.Theater)
+            .Where(c => c.IsAvailable && c.StockCount > 0);
+
+        if (theaterId.HasValue)
+        {
+            query = query.Where(c => c.TheaterId == theaterId.Value || c.TheaterId == null);
+        }
+
+        return await query
             .OrderBy(c => c.Category)
             .ThenBy(c => c.ItemName)
             .ToListAsync();
+    }
+
+    public async Task<List<ConcessionItem>> GetAllWithTheaterAsync(int? theaterId = null)
+    {
+        var query = _dbSet
+            .AsNoTracking()
+            .Include(c => c.Theater)
+            .AsQueryable();
+
+        if (theaterId.HasValue)
+        {
+            query = query.Where(c => c.TheaterId == theaterId.Value);
+        }
+
+        return await query
+            .OrderBy(c => c.Category)
+            .ThenBy(c => c.ItemName)
+            .ToListAsync();
+    }
+
+    public async Task<ConcessionItem?> GetWithTheaterByIdAsync(int id)
+    {
+        return await _dbSet
+            .Include(c => c.Theater)
+            .FirstOrDefaultAsync(c => c.Id == id);
     }
 }

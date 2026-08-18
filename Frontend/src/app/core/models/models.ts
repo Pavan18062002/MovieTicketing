@@ -56,10 +56,66 @@ export interface UpdateMovieRequest {
   isActive?: boolean;
 }
 
+// Theaters (Multi-Admin Ownership)
+export interface Theater {
+  id: number;
+  name: string;
+  location: string;
+  adminId: string;
+  adminName: string;
+  screenCount: number;
+  createdAt: string;
+}
+
+export interface CreateTheaterRequest {
+  name: string;
+  location: string;
+}
+
+export interface UpdateTheaterRequest {
+  name: string;
+  location: string;
+}
+
+// User Management (Super Admin)
+export interface UserDto {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  theatersCount: number;
+  assignedTheaterName?: string;
+  createdAt: string;
+}
+
+export interface CreateAdminRequest {
+  email: string;
+  fullName: string;
+  password: string;
+  theaterName?: string;
+  theaterLocation?: string;
+}
+
+export interface UpdateUserRoleRequest {
+  role: string;
+}
+
+export interface SystemStats {
+  totalUsers: number;
+  totalAdmins: number;
+  totalTheaters: number;
+  totalScreens: number;
+  totalMovies: number;
+  totalBookings: number;
+  totalRevenue: number;
+}
+
 // Screens
 export interface Screen {
   id: number;
   name: string;
+  theaterId?: number;
+  theaterName?: string;
   capacity: number;
   totalRows: number;
   totalColumns: number;
@@ -71,6 +127,7 @@ export interface Screen {
 
 export interface CreateScreenRequest {
   name: string;
+  theaterId?: number | null;
   totalRows: number;
   totalColumns: number;
   premiumRows?: number;
@@ -81,6 +138,7 @@ export interface CreateScreenRequest {
 
 export interface UpdateScreenRequest {
   name: string;
+  theaterId?: number | null;
   premiumRows?: number;
   vipRows?: number;
   premiumMultiplier?: number;
@@ -131,6 +189,9 @@ export interface ConcessionItem {
   baseStockCount: number;
   isAvailable: boolean;
   isLowStock: boolean;
+  theaterId?: number;
+  theaterName?: string;
+  theaterLocation?: string;
 }
 
 export interface CreateConcessionRequest {
@@ -139,6 +200,7 @@ export interface CreateConcessionRequest {
   category: number;
   price: number;
   stockCount: number;
+  theaterId?: number | null;
 }
 
 export interface UpdateConcessionRequest {
@@ -146,6 +208,7 @@ export interface UpdateConcessionRequest {
   itemSize: string;
   category: number;
   price: number;
+  theaterId?: number | null;
 }
 
 // Seat grid
@@ -164,6 +227,9 @@ export interface ShowSeatsResponse {
   showId: number;
   movieTitle: string;
   screenName: string;
+  theaterId?: number;
+  theaterName?: string;
+  theaterLocation?: string;
   showTime: string;
   baseTicketPrice: number;
   totalRows: number;

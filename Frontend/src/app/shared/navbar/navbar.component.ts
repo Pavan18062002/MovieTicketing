@@ -28,9 +28,14 @@ import { AuthService } from '../../core/services/auth.service';
               My Bookings
             </a>
           }
+          @if (auth.isSuperAdmin()) {
+            <a routerLink="/super-admin" routerLinkActive="active" class="nav-link super-admin-pill">
+              <mat-icon class="sm-icon">workspace_premium</mat-icon> Super Admin
+            </a>
+          }
           @if (auth.isAdmin()) {
             <a routerLink="/admin" routerLinkActive="active" class="nav-link admin-pill">
-              <mat-icon class="sm-icon">admin_panel_settings</mat-icon> Admin
+              <mat-icon class="sm-icon">admin_panel_settings</mat-icon> Admin Panel
             </a>
           }
         </div>
@@ -103,6 +108,10 @@ import { AuthService } from '../../core/services/auth.service';
     .admin-pill {
       color: #a78bfa; background: rgba(124, 58, 237, 0.15);
       border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+    .super-admin-pill {
+      color: #facc15; background: rgba(234, 179, 8, 0.15);
+      border: 1px solid rgba(234, 179, 8, 0.35);
     }
     .sm-icon { font-size: 16px !important; width: 16px !important; height: 16px !important; }
 

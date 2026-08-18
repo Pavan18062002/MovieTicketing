@@ -52,9 +52,9 @@ public class CatalogController : ControllerBase
     }
 
     [HttpGet("concessions")]
-    public async Task<IActionResult> GetAvailableConcessions()
+    public async Task<IActionResult> GetAvailableConcessions([FromQuery] int? theaterId)
     {
-        var result = await _concessionService.GetAvailableAsync();
+        var result = await _concessionService.GetAvailableAsync(theaterId);
         return Ok(result);
     }
 }

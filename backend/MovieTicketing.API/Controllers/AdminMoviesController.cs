@@ -8,7 +8,7 @@ namespace MovieTicketing.API.Controllers;
 /// <summary>Admin-only movie management CRUD.</summary>
 [ApiController]
 [Route("api/admin/movies")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,SuperAdmin")]
 public class AdminMoviesController : ControllerBase
 {
     private readonly IMovieService _movieService;

@@ -1,0 +1,93 @@
+<div class="page-header">
+  <h1>Manage Theaters</h1>
+  @if (editingId()) {
+    <button class="btn-add-new" (click)="cancelEdit()">+ Add New Theater</button>
+  }
+</div>
+
+<!-- Add / Edit Theater Form -->
+<mat-card class="form-card">
+  <mat-card-header>
+    <mat-card-title>{{ editingId() ? 'Edit Theater' : 'Add New Theater' }}</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="submit()" class="form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Theater Name</mat-label>
+        <input matInput formControlName="name">
+        @if (form.get('name')?.hasError('required')) { <mat-error>Theater name is required</mat-error> }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Location / City</mat-label>
+        <input matInput formControlName="location">
+        @if (form.get('location')?.hasError('required')) { <mat-error>Location is required</mat-error> }
+      </mat-form-field>
+
+      <div class="span-full actions-row">
+        <button mat-raised-button color="primary" type="submit" [disabled]="saving() || form.invalid">
+          @if (saving()) { <mat-spinner diameter="18" /> }
+          @else { {{ editingId() ? 'Save Changes' : 'Create Theater' }} }
+        </button>
+        @if (editingId()) {
+          <button mat-button type="button" (click)="cancelEdit()">Cancel</button>
+        }
+      </div>
+    </form>
+  </mat-card-content>
+</mat-card>
+
+<!-- Theaters Table -->
+@if (loading()) {
+  <div class="center-spinner"><mat-spinner diameter="40" /></div>
+} @else {
+  <mat-card class="table-card">
+    <table mat-table [dataSource]="theaters()" class="full-width">
+      <!-- Name Column -->
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef>Theater Name</th>
+        <td mat-cell *matCellDef="let t">
+          <div class="theater-name">{{ t.name }}</div>
+        </td>
+      </ng-container>
+
+      <!-- Location Column -->
+      <ng-container matColumnDef="location">
+        <th mat-header-cell *matHeaderCellDef>Location</th>
+        <td mat-cell *matCellDef="let t">{{ t.location }}</td>
+      </ng-container>
+
+      <!-- Screens Column -->
+      <ng-container matColumnDef="screens">
+        <th mat-header-cell *matHeaderCellDef>Screen Count</th>
+        <td mat-cell *matCellDef="let t">
+          <span class="badge-screen">{{ t.screenCount }} Screen(s)</span>
+        </td>
+      </ng-container>
+
+      <!-- Owner Column -->
+      <ng-container matColumnDef="owner">
+        <th mat-header-cell *matHeaderCellDef>Admin Owner</th>
+        <td mat-cell *matCellDef="let t">
+          <span class="owner-tag">🛡️ {{ t.adminName }}</span>
+        </td>
+      </ng-container>
+
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Actions</th>
+        <td mat-cell *matCellDef="let t">
+          <button mat-icon-button color="primary" (click)="startEdit(t)" title="Edit">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" (click)="deleteTheater(t.id)" title="Delete">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="cols"></tr>
+      <tr mat-row *matRowDef="let row; columns: cols;"></tr>
+    </table>
+  </mat-card>
+}

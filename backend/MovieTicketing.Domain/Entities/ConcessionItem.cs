@@ -29,6 +29,9 @@ public class ConcessionItem
     /// </summary>
     public int BaseStockCount { get; set; }
 
+    public int? TheaterId { get; set; }
+    public Theater? Theater { get; set; }
+
     public bool IsAvailable { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

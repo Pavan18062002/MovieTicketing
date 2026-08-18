@@ -5,18 +5,19 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatCardModule } from '@angular/material/card';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../../core/services/api.service';
-import { Screen } from '../../../core/models/models';
+import { Screen, Theater } from '../../../core/models/models';
 
 @Component({
   selector: 'app-screens-admin',
   standalone: true,
   imports: [
     ReactiveFormsModule, MatTableModule, MatButtonModule, MatIconModule,
-    MatFormFieldModule, MatInputModule, MatCardModule,
+    MatFormFieldModule, MatInputModule, MatSelectModule, MatCardModule,
     MatSnackBarModule, MatProgressSpinnerModule
   ],
   templateUrl: './screens-admin.component.html',
@@ -30,13 +31,15 @@ export class ScreensAdminComponent implements OnInit {
   @ViewChild(FormGroupDirective) formDirective!: FormGroupDirective;
 
   screens = signal<Screen[]>([]);
+  theaters = signal<Theater[]>([]);
   loading = signal(true);
   saving = signal(false);
   editingId = signal<number | null>(null);
-  cols = ['name', 'capacity', 'actions'];
+  cols = ['name', 'theater', 'capacity', 'actions'];
 
   form = this.fb.group({
     name: ['', Validators.required],
+    theaterId: [null as number | null],
     totalRows: [10, [Validators.required, Validators.min(1)]],
     totalColumns: [10, [Validators.required, Validators.min(1)]],
     premiumRows: [5, [Validators.required, Validators.min(0)]],
@@ -45,13 +48,30 @@ export class ScreensAdminComponent implements OnInit {
     vipMultiplier: [1.6, [Validators.required, Validators.min(1.0)]]
   });
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+  }
 
   load(): void {
     this.loading.set(true);
-    this.api.adminGetScreens().subscribe(res => {
-      this.screens.set(res.data ?? []);
-      this.loading.set(false);
+
+    this.api.adminGetTheaters().subscribe({
+      next: res => {
+        if (res.success) {
+          this.theaters.set(res.data);
+          if (res.data.length > 0 && !this.editingId()) {
+            this.form.patchValue({ theaterId: res.data[0].id });
+          }
+        }
+      }
+    });
+
+    this.api.adminGetScreens().subscribe({
+      next: res => {
+        this.screens.set(res.data ?? []);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false)
     });
   }
 
@@ -59,6 +79,7 @@ export class ScreensAdminComponent implements OnInit {
     this.editingId.set(screen.id);
     this.form.patchValue({
       name: screen.name,
+      theaterId: screen.theaterId ?? null,
       totalRows: screen.totalRows,
       totalColumns: screen.totalColumns,
       premiumRows: screen.premiumRows ?? 5,
@@ -66,7 +87,6 @@ export class ScreensAdminComponent implements OnInit {
       premiumMultiplier: screen.premiumMultiplier ?? 1.3,
       vipMultiplier: screen.vipMultiplier ?? 1.6
     });
-    // Total rows and columns cannot be resized after creation, so keep disabled
     this.form.get('totalRows')!.disable();
     this.form.get('totalColumns')!.disable();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -86,6 +106,7 @@ export class ScreensAdminComponent implements OnInit {
     if (this.editingId()) {
       const payload = {
         name: this.form.get('name')!.value!,
+        theaterId: this.form.get('theaterId')!.value,
         premiumRows: Number(this.form.get('premiumRows')!.value) || 0,
         vipRows: Number(this.form.get('vipRows')!.value) || 0,
         premiumMultiplier: Number(this.form.get('premiumMultiplier')!.value) || 1.3,
@@ -96,7 +117,7 @@ export class ScreensAdminComponent implements OnInit {
         next: res => {
           this.saving.set(false);
           if (res.success) {
-            this.snack.open('Screen updated!', 'OK', { duration: 3000 });
+            this.snack.open('Screen updated successfully!', 'OK', { duration: 3000 });
             this.cancelEdit();
             this.load();
           } else {
@@ -113,10 +134,10 @@ export class ScreensAdminComponent implements OnInit {
         next: res => {
           this.saving.set(false);
           if (res.success) {
-            this.snack.open('Screen added!', 'OK', { duration: 3000 });
+            this.snack.open('Screen added successfully!', 'OK', { duration: 3000 });
             this.form.get('totalRows')!.enable();
             this.form.get('totalColumns')!.enable();
-            this.formDirective.resetForm({ totalRows: 10, totalColumns: 10 });
+            this.formDirective.resetForm({ totalRows: 10, totalColumns: 10, premiumRows: 5, vipRows: 2, premiumMultiplier: 1.3, vipMultiplier: 1.6 });
             this.load();
           } else {
             this.snack.open(res.message, 'Close', { duration: 4000 });
@@ -131,12 +152,19 @@ export class ScreensAdminComponent implements OnInit {
   }
 
   deleteScreen(id: number): void {
-    this.api.adminDeleteScreen(id).subscribe(res => {
-      if (res.success) {
-        this.snack.open('Screen deleted', 'OK', { duration: 3000 });
-        this.load();
-      } else {
-        this.snack.open(res.message, 'Close', { duration: 4000 });
+    if (!confirm('Are you sure you want to delete this screen?')) return;
+    this.api.adminDeleteScreen(id).subscribe({
+      next: res => {
+        if (res.success) {
+          this.snack.open('Screen deleted successfully', 'OK', { duration: 3000 });
+          this.load();
+        } else {
+          this.snack.open(res.message, 'Close', { duration: 5000 });
+        }
+      },
+      error: err => {
+        const msg = err.error?.message || err.error?.errors?.[0] || 'Delete failed';
+        this.snack.open(msg, 'Close', { duration: 5000 });
       }
     });
   }

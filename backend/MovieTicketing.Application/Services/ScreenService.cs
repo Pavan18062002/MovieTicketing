@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using MovieTicketing.Application.Common;
 using MovieTicketing.Application.DTOs.Screens;
 using MovieTicketing.Application.Interfaces;
@@ -16,23 +20,45 @@ public class ScreenService : IScreenService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<ApiResponse<List<ScreenResponseDto>>> GetAllAsync()
+    public async Task<ApiResponse<List<ScreenResponseDto>>> GetAllAsync(string? adminId = null, bool isSuperAdmin = false)
     {
-        var screens = await _unitOfWork.Screens.GetAllAsync();
+        var screens = await _unitOfWork.Screens.GetAllWithShowsCountAsync();
+
+        // Scope to admin's theaters if caller is a Theater Admin
+        if (!isSuperAdmin && !string.IsNullOrEmpty(adminId))
+        {
+            screens = screens.Where(s => s.Theater == null || s.Theater.AdminId == adminId).ToList();
+        }
+
         return ApiResponse<List<ScreenResponseDto>>.Ok(screens.Select(MapToDto).ToList());
     }
 
-    public async Task<ApiResponse<ScreenResponseDto>> GetByIdAsync(int id)
+    public async Task<ApiResponse<ScreenResponseDto>> GetByIdAsync(int id, string? adminId = null, bool isSuperAdmin = false)
     {
-        var screen = await _unitOfWork.Screens.GetByIdAsync(id);
+        var screen = await _unitOfWork.Screens.GetWithSeatsByIdAsync(id);
         if (screen == null)
             return ApiResponse<ScreenResponseDto>.Fail("Screen not found.");
+
+        // Ownership check
+        if (!isSuperAdmin && !string.IsNullOrEmpty(adminId) && screen.Theater != null && screen.Theater.AdminId != adminId)
+            return ApiResponse<ScreenResponseDto>.Fail("You do not have permission to access this screen.");
 
         return ApiResponse<ScreenResponseDto>.Ok(MapToDto(screen));
     }
 
-    public async Task<ApiResponse<ScreenResponseDto>> CreateAsync(CreateScreenDto dto)
+    public async Task<ApiResponse<ScreenResponseDto>> CreateAsync(CreateScreenDto dto, string? adminId = null)
     {
+        // If assigned to a theater, verify ownership
+        if (dto.TheaterId.HasValue && !string.IsNullOrEmpty(adminId))
+        {
+            var theater = await _unitOfWork.Theaters.GetByIdAsync(dto.TheaterId.Value);
+            if (theater == null)
+                return ApiResponse<ScreenResponseDto>.Fail("Theater not found.");
+
+            if (theater.AdminId != adminId)
+                return ApiResponse<ScreenResponseDto>.Fail("You cannot add a screen to a theater you do not own.");
+        }
+
         decimal premMult = dto.PremiumMultiplier > 0 ? dto.PremiumMultiplier : 1.3m;
         decimal vipMult = dto.VipMultiplier > 0 ? dto.VipMultiplier : 1.6m;
 
@@ -48,6 +74,7 @@ public class ScreenService : IScreenService
         var screen = new Screen
         {
             Name = dto.Name,
+            TheaterId = dto.TheaterId,
             TotalRows = dto.TotalRows,
             TotalColumns = dto.TotalColumns,
             PremiumRows = premRows,
@@ -101,16 +128,23 @@ public class ScreenService : IScreenService
         screen.Seats = seats;
         await _unitOfWork.SaveChangesAsync();
 
-        return ApiResponse<ScreenResponseDto>.Ok(MapToDto(screen), "Screen created successfully.");
+        var created = await _unitOfWork.Screens.GetWithSeatsByIdAsync(screen.Id);
+        return ApiResponse<ScreenResponseDto>.Ok(MapToDto(created ?? screen), "Screen created successfully.");
     }
 
-    public async Task<ApiResponse<ScreenResponseDto>> UpdateAsync(int id, UpdateScreenDto dto)
+    public async Task<ApiResponse<ScreenResponseDto>> UpdateAsync(int id, UpdateScreenDto dto, string? adminId = null, bool isSuperAdmin = false)
     {
         var screen = await _unitOfWork.Screens.GetWithSeatsByIdAsync(id);
         if (screen == null)
             return ApiResponse<ScreenResponseDto>.Fail("Screen not found.");
 
+        if (!isSuperAdmin && !string.IsNullOrEmpty(adminId) && screen.Theater != null && screen.Theater.AdminId != adminId)
+            return ApiResponse<ScreenResponseDto>.Fail("You cannot modify another Admin's screen.");
+
         screen.Name = dto.Name;
+        if (dto.TheaterId.HasValue)
+            screen.TheaterId = dto.TheaterId;
+
         if (dto.PremiumMultiplier.HasValue && dto.PremiumMultiplier.Value > 0)
             screen.PremiumMultiplier = dto.PremiumMultiplier.Value;
 
@@ -154,11 +188,14 @@ public class ScreenService : IScreenService
         return ApiResponse<ScreenResponseDto>.Ok(MapToDto(screen), "Screen updated successfully.");
     }
 
-    public async Task<ApiResponse<bool>> DeleteAsync(int id)
+    public async Task<ApiResponse<bool>> DeleteAsync(int id, string? adminId = null, bool isSuperAdmin = false)
     {
         var screen = await _unitOfWork.Screens.GetWithSeatsByIdAsync(id);
         if (screen == null)
             return ApiResponse<bool>.Fail("Screen not found.");
+
+        if (!isSuperAdmin && !string.IsNullOrEmpty(adminId) && screen.Theater != null && screen.Theater.AdminId != adminId)
+            return ApiResponse<bool>.Fail("You cannot delete another Admin's screen.");
 
         _unitOfWork.Screens.Remove(screen);
         await _unitOfWork.SaveChangesAsync();
@@ -182,6 +219,8 @@ public class ScreenService : IScreenService
     {
         Id = screen.Id,
         Name = screen.Name,
+        TheaterId = screen.TheaterId,
+        TheaterName = screen.Theater?.Name ?? string.Empty,
         Capacity = screen.Capacity,
         TotalRows = screen.TotalRows,
         TotalColumns = screen.TotalColumns,

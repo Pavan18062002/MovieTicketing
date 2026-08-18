@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, adminGuard, guestGuard } from './core/guards/auth.guard';
+import { authGuard, adminGuard, guestGuard, superAdminGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   // Default: redirect to movies homepage
@@ -18,7 +18,14 @@ export const routes: Routes = [
     loadChildren: () => import('./features/movies/movies.routes').then(m => m.MOVIES_ROUTES)
   },
 
-  // Admin section — requires login AND Admin role
+  // Super Admin section — requires login AND SuperAdmin role
+  {
+    path: 'super-admin',
+    canActivate: [authGuard, superAdminGuard],
+    loadChildren: () => import('./features/super-admin/super-admin.routes').then(m => m.SUPER_ADMIN_ROUTES)
+  },
+
+  // Admin section — requires login AND Admin or SuperAdmin role
   {
     path: 'admin',
     canActivate: [authGuard, adminGuard],

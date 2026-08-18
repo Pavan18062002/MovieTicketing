@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace MovieTicketing.Infrastructure.Hubs;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,SuperAdmin")]
 public class AdminHub : Hub
 {
     public const string AdminGroupName = "admin-alerts";

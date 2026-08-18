@@ -1,15 +1,17 @@
 import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { interval, Subscription } from 'rxjs';
+import { Subscription, interval } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
-import { SignalRService } from '../../../core/services/signalr.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { SeatInfo, ShowSeatsResponse, ConcessionItem, BookingConcessionItem, BookingResponse } from '../../../core/models/models';
+import { SignalRService } from '../../../core/services/signalr.service';
+import { ShowSeatsResponse, SeatInfo, ConcessionItem, BookingConcessionItem, BookingResponse } from '../../../core/models/models';
 
-interface SeatRowGroup {
+export interface SeatRowGroup {
   rowLabel: string;
   seats: SeatInfo[];
 }
@@ -17,29 +19,44 @@ interface SeatRowGroup {
 @Component({
   selector: 'app-seat-selection',
   standalone: true,
-  imports: [MatIconModule, MatProgressSpinnerModule, DatePipe, DecimalPipe],
+  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink],
   templateUrl: './seat-selection.component.html',
   styleUrl: './seat-selection.component.css'
 })
 export class SeatSelectionComponent implements OnInit, OnDestroy {
-  private api = inject(ApiService);
+  private api     = inject(ApiService);
+  private auth    = inject(AuthService);
   private signalr = inject(SignalRService);
-  private auth = inject(AuthService);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
+  private route   = inject(ActivatedRoute);
+  private router  = inject(Router);
 
   showData = signal<ShowSeatsResponse | null>(null);
-  concessions = signal<ConcessionItem[]>([]);
   loading = signal(true);
   submitting = signal(false);
   errorMsg = signal('');
-  step = signal<1 | 2 | 3>(1);
+
+  step = signal<1 | 2 | 3>(1); // 1 = Seat Grid, 2 = Food & Beverage, 3 = Payment Options
 
   selectedSeatIds = signal<Set<number>>(new Set());
-  otherUserLockedSeatIds = signal<Set<number>>(new Set()); // Real-time locks held by other concurrent users
+  otherUserLockedSeatIds = signal<Set<number>>(new Set());
+  concessions = signal<ConcessionItem[]>([]);
   concessionCart = signal<Map<number, number>>(new Map());
   selectedPayment = signal<string>('upi');
   bookingResult = signal<BookingResponse | null>(null);
+
+  // Payment Gateway fields
+  upiId = signal<string>('');
+  upiMode = signal<'id' | 'qr'>('id');
+  cardNumber = signal<string>('');
+  cardExpiry = signal<string>('');
+  cardCvv = signal<string>('');
+  cardName = signal<string>('');
+  selectedBank = signal<string>('HDFC Bank');
+  selectedWallet = signal<string>('Paytm Wallet');
+
+  // Gateway live status overlay
+  gatewayProcessing = signal<boolean>(false);
+  gatewayStatus = signal<string>('');
 
   lockTimer = signal<number | null>(null);
   timerExpired = signal(false);
@@ -47,7 +64,6 @@ export class SeatSelectionComponent implements OnInit, OnDestroy {
   private signalRSubs = new Subscription();
   private lockingInProgress = new Set<number>();
 
-  // Converts any 0-indexed row number into cinema row letters (0 -> A ... 25 -> Z, 26 -> AA...)
   getRowLabel(rowIndex: number): string {
     let label = '';
     let temp = rowIndex;
@@ -148,34 +164,32 @@ export class SeatSelectionComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Listen for permanently booked seats
+    // Listen for live seat booking events
     this.signalRSubs.add(
       this.signalr.seatsBooked$.subscribe(event => {
         if (event.showId === showId) {
-          const data = this.showData();
-          if (data) {
-            const updatedSeats = data.seats.map(s =>
-              event.seatIds.includes(s.id) ? { ...s, isBooked: true } : s
-            );
-            this.showData.set({ ...data, seats: updatedSeats });
-          }
-
           const locked = new Set(this.otherUserLockedSeatIds());
           event.seatIds.forEach(id => locked.delete(id));
           this.otherUserLockedSeatIds.set(locked);
+
+          const currentShow = this.showData();
+          if (currentShow) {
+            const updatedSeats = currentShow.seats.map(s =>
+              event.seatIds.includes(s.id) ? { ...s, isBooked: true } : s
+            );
+            this.showData.set({ ...currentShow, seats: updatedSeats });
+          }
         }
       })
     );
   }
 
   ngOnDestroy(): void {
-    const showId = this.showData()?.showId;
-    if (showId) {
-      this.signalr.leaveShowGroup(showId);
-    }
+    const showId = Number(this.route.snapshot.paramMap.get('showId'));
+    this.signalr.leaveShowGroup(showId);
     this.signalRSubs.unsubscribe();
-    this.releaseAllLocks();
     this.stopTimer();
+    this.releaseAllLocks();
   }
 
   toggleSeat(seat: SeatInfo): void {
@@ -252,7 +266,8 @@ export class SeatSelectionComponent implements OnInit, OnDestroy {
   proceedToFnb(): void {
     if (this.selectedSeatIds().size === 0) return;
     this.errorMsg.set('');
-    this.api.getAvailableConcessions().subscribe(res => {
+    const theaterId = this.showData()?.theaterId;
+    this.api.getAvailableConcessions(theaterId).subscribe(res => {
       this.concessions.set(res.data ?? []);
       this.step.set(2);
     });
@@ -280,39 +295,103 @@ export class SeatSelectionComponent implements OnInit, OnDestroy {
 
   setPaymentMethod(method: string): void {
     this.selectedPayment.set(method);
+    this.errorMsg.set('');
   }
 
   confirmBooking(): void {
     const data = this.showData();
     if (!data) return;
-    this.submitting.set(true);
     this.errorMsg.set('');
+
+    // 1. Strict Payment Validation
+    if (this.selectedPayment() === 'upi') {
+      if (this.upiMode() === 'id') {
+        const id = this.upiId().trim();
+        if (!id) {
+          this.errorMsg.set('Please enter your UPI ID (e.g. yourname@upi or mobile@okhdfcbank).');
+          return;
+        }
+        if (!id.includes('@') || id.length < 5) {
+          this.errorMsg.set('Please enter a valid UPI ID containing "@" (e.g. name@okhdfcbank).');
+          return;
+        }
+      }
+    } else if (this.selectedPayment() === 'card') {
+      const rawCard = this.cardNumber().replace(/\s/g, '');
+      if (!rawCard || rawCard.length < 12) {
+        this.errorMsg.set('Please enter a valid 16-digit Card Number.');
+        return;
+      }
+      if (!this.cardExpiry().trim() || this.cardExpiry().trim().length < 4) {
+        this.errorMsg.set('Please enter Card Expiry (MM/YY).');
+        return;
+      }
+      if (!this.cardCvv().trim() || this.cardCvv().trim().length < 3) {
+        this.errorMsg.set('Please enter a valid 3-digit CVV.');
+        return;
+      }
+      if (!this.cardName().trim()) {
+        this.errorMsg.set('Please enter the Cardholder Name.');
+        return;
+      }
+    } else if (this.selectedPayment() === 'netbanking') {
+      if (!this.selectedBank()) {
+        this.errorMsg.set('Please select your Bank for Net Banking.');
+        return;
+      }
+    } else if (this.selectedPayment() === 'wallets') {
+      if (!this.selectedWallet()) {
+        this.errorMsg.set('Please select a Wallet.');
+        return;
+      }
+    }
+
+    this.submitting.set(true);
+    this.gatewayProcessing.set(true);
+    this.gatewayStatus.set('🔒 Securely Connecting to Payment Gateway...');
 
     const concessionItems: BookingConcessionItem[] = [];
     this.concessionCart().forEach((qty, id) => {
       concessionItems.push({ concessionItemId: id, quantity: qty });
     });
 
-    this.api.checkout({
-      showId: data.showId,
-      seatIds: [...this.selectedSeatIds()],
-      concessionItems
-    }).subscribe({
-      next: res => {
-        if (res.success) {
-          this.stopTimer();
-          this.bookingResult.set(res.data);
-          this.router.navigate(['/booking/confirmation', res.data.id]);
-        } else {
-          this.errorMsg.set(res.message);
-          this.submitting.set(false);
-        }
-      },
-      error: () => {
-        this.errorMsg.set('Something went wrong. Please try again.');
-        this.submitting.set(false);
-      }
-    });
+    setTimeout(() => {
+      const methodLabel = this.selectedPayment() === 'upi' ? 'UPI (GPay/PhonePe)' :
+                          this.selectedPayment() === 'card' ? 'Credit Card (Visa)' :
+                          this.selectedPayment() === 'netbanking' ? this.selectedBank() : 'Wallet';
+
+      this.gatewayStatus.set(`Authorizing ₹${this.grandTotal()} with ${methodLabel}...`);
+
+      setTimeout(() => {
+        const txnId = 'TXN_' + Math.floor(100000000 + Math.random() * 900000000);
+        this.gatewayStatus.set(`✅ Payment Approved! (${txnId})`);
+
+        setTimeout(() => {
+          this.api.checkout({
+            showId: data.showId,
+            seatIds: [...this.selectedSeatIds()],
+            concessionItems
+          }).subscribe({
+            next: res => {
+              this.gatewayProcessing.set(false);
+              if (res.success) {
+                this.stopTimer();
+                this.bookingResult.set(res.data);
+                this.router.navigate(['/booking/confirmation', res.data.id]);
+              } else {
+                this.errorMsg.set(res.message);
+                this.submitting.set(false);
+              }
+            },
+            error: err => {
+              this.gatewayProcessing.set(false);
+              this.errorMsg.set(err.error?.message || 'Something went wrong with the transaction.');
+              this.submitting.set(false);
+            }
+          });
+        }, 500);
+      }, 700);
+    }, 600);
   }
 
   goBack(): void {

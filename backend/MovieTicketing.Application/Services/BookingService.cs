@@ -229,13 +229,14 @@ public class BookingService : IBookingService
             // Broadcast real-time seat booked event to all users viewing this show
             await _notifier.SendSeatBookedAsync(dto.ShowId, dto.SeatIds);
 
-            // Check for low-stock concessions and broadcast alerts to AdminHub
+            // Check for low-stock concessions and broadcast real-time alerts to AdminHub
             foreach (var orderItem in dto.ConcessionItems)
             {
                 var item = concessionItems.First(c => c.Id == orderItem.ConcessionItemId);
-                if (item.BaseStockCount > 0 && item.StockCount <= (int)Math.Ceiling(item.BaseStockCount * 0.10))
+                if (item.StockCount <= 5 || (item.BaseStockCount > 0 && item.StockCount <= (int)Math.Ceiling(item.BaseStockCount * 0.20)))
                 {
-                    await _notifier.SendLowStockAlertAsync(item.Id, item.ItemName, item.ItemSize, item.StockCount, item.BaseStockCount);
+                    var branchInfo = item.Theater != null ? $" ({item.Theater.Name})" : (screen.Theater != null ? $" ({screen.Theater.Name})" : "");
+                    await _notifier.SendLowStockAlertAsync(item.Id, $"{item.ItemName}{branchInfo}", item.ItemSize, item.StockCount, item.BaseStockCount);
                 }
             }
 

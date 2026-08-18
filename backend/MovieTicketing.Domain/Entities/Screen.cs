@@ -16,6 +16,10 @@ public class Screen
     public decimal VipMultiplier { get; set; } = 1.6m;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // Optional Theater ownership grouping
+    public int? TheaterId { get; set; }
+    public virtual Theater? Theater { get; set; }
+
     // Navigation
     public virtual ICollection<Seat> Seats { get; set; } = new List<Seat>();
     public virtual ICollection<Show> Shows { get; set; } = new List<Show>();

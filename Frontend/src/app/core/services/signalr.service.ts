@@ -116,12 +116,9 @@ export class SignalRService {
       return;
     }
 
-    const token = this.auth.getToken();
-    if (!token) return;
-
     this.adminHub = new signalR.HubConnectionBuilder()
       .withUrl(`${environment.hubUrl}/admin`, {
-        accessTokenFactory: () => token
+        accessTokenFactory: () => this.auth.getToken() || ''
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000])
       .build();

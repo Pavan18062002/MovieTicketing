@@ -373,6 +373,23 @@ input.mat-mdc-input-element,
   border-radius: 20px !important;
 }
 
+/* Admin Low Stock Toast */
+.admin-low-stock-toast {
+  --mdc-snackbar-container-color: #dc2626 !important;
+  --mat-snack-bar-button-color: #ffffff !important;
+}
+.admin-low-stock-toast .mdc-snackbar__surface {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.5) !important;
+}
+.admin-low-stock-toast .mat-mdc-snack-bar-action {
+  color: #fef08a !important;
+  font-weight: 700 !important;
+}
+
 /* Admin Item Titles & Badges */
 .item-name { color: #ffffff !important; }
 .page-header h1 { color: #ffffff !important; }

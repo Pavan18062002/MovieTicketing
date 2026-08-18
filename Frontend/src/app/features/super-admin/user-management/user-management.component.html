@@ -1,0 +1,216 @@
+<div class="super-admin-container">
+  <div class="page-header">
+    <div>
+      <h1>Super Admin Control Center</h1>
+      <p class="subtitle">Onboard theater partners, assign cinema branches, and monitor platform performance.</p>
+    </div>
+    <button mat-raised-button color="primary" class="btn-create" (click)="showCreateForm.set(!showCreateForm())">
+      <mat-icon>{{ showCreateForm() ? 'close' : 'person_add' }}</mat-icon>
+      {{ showCreateForm() ? 'Close Form' : '+ Onboard Theater Admin' }}
+    </button>
+  </div>
+
+  <!-- Global Metrics Summary -->
+  @if (stats()) {
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon users"><mat-icon>people</mat-icon></div>
+        <div class="stat-info">
+          <div class="stat-val">{{ stats()!.totalUsers }}</div>
+          <div class="stat-lbl">Total Users</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon admins"><mat-icon>shield</mat-icon></div>
+        <div class="stat-info">
+          <div class="stat-val">{{ stats()!.totalAdmins }}</div>
+          <div class="stat-lbl">Theater Partners</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon theaters"><mat-icon>theaters</mat-icon></div>
+        <div class="stat-info">
+          <div class="stat-val">{{ stats()!.totalTheaters }}</div>
+          <div class="stat-lbl">Active Theaters</div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Onboard Admin & Initial Theater Form -->
+  @if (showCreateForm()) {
+    <mat-card class="form-card">
+      <mat-card-header>
+        <mat-card-title>Onboard New Theater Partner & Branch</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="adminForm" (ngSubmit)="createAdmin()" class="form-grid">
+          <!-- Admin Credentials -->
+          <mat-form-field appearance="outline">
+            <mat-label>Partner Admin Name</mat-label>
+            <input matInput formControlName="fullName">
+            @if (adminForm.get('fullName')?.hasError('required')) { <mat-error>Full name is required</mat-error> }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Partner Email Address</mat-label>
+            <input matInput type="email" formControlName="email">
+            @if (adminForm.get('email')?.hasError('required')) { <mat-error>Email is required</mat-error> }
+            @if (adminForm.get('email')?.hasError('email')) { <mat-error>Invalid email format</mat-error> }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Admin Password</mat-label>
+            <input matInput type="password" formControlName="password">
+            @if (adminForm.get('password')?.hasError('required')) { <mat-error>Password is required</mat-error> }
+            @if (adminForm.get('password')?.hasError('minlength')) { <mat-error>Minimum 6 characters</mat-error> }
+          </mat-form-field>
+
+          <!-- Assigned Theater Information -->
+          <mat-form-field appearance="outline">
+            <mat-label>Assigned Theater Name</mat-label>
+            <input matInput formControlName="theaterName">
+            @if (adminForm.get('theaterName')?.hasError('required')) { <mat-error>Theater name is required</mat-error> }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Theater Location / City</mat-label>
+            <input matInput formControlName="theaterLocation">
+            @if (adminForm.get('theaterLocation')?.hasError('required')) { <mat-error>Location is required</mat-error> }
+          </mat-form-field>
+
+          <div class="actions-row">
+            <button mat-raised-button color="primary" type="submit" class="btn-submit" [disabled]="creatingAdmin() || adminForm.invalid">
+              @if (creatingAdmin()) { <mat-spinner diameter="18" /> }
+              @else { Provision Admin & Theater }
+            </button>
+            <button mat-button type="button" class="btn-cancel" (click)="showCreateForm.set(false)">Cancel</button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <!-- Assign Additional Branch Form Modal / Card -->
+  @if (selectedUserForBranch()) {
+    <mat-card class="form-card branch-card">
+      <mat-card-header>
+        <mat-card-title>🏛️ Assign Additional Theater Branch to {{ selectedUserForBranch()!.fullName }}</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="branchForm" (ngSubmit)="submitAddBranch()" class="form-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Additional Theater Name</mat-label>
+            <input matInput formControlName="name">
+            @if (branchForm.get('name')?.hasError('required')) { <mat-error>Name is required</mat-error> }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Theater Location / City</mat-label>
+            <input matInput formControlName="location">
+            @if (branchForm.get('location')?.hasError('required')) { <mat-error>Location is required</mat-error> }
+          </mat-form-field>
+
+          <div class="actions-row">
+            <button mat-raised-button color="primary" type="submit" class="btn-submit" [disabled]="addingBranch() || branchForm.invalid">
+              @if (addingBranch()) { <mat-spinner diameter="18" /> }
+              @else { Assign Branch to Admin }
+            </button>
+            <button mat-button type="button" class="btn-cancel" (click)="closeAddBranch()">Cancel</button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <!-- User & Admin Table -->
+  <mat-card class="table-card">
+    <mat-card-header>
+      <mat-card-title>Platform Accounts & Cinema Branches</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      @if (loading()) {
+        <div class="center-spinner"><mat-spinner diameter="40" /></div>
+      } @else {
+        <table mat-table [dataSource]="users()" class="full-width">
+          <!-- Name Column -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>User / Partner Name</th>
+            <td mat-cell *matCellDef="let u">
+              <div class="user-name">{{ u.fullName }}</div>
+            </td>
+          </ng-container>
+
+          <!-- Email Column -->
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>Email</th>
+            <td mat-cell *matCellDef="let u">{{ u.email }}</td>
+          </ng-container>
+
+          <!-- Role Column -->
+          <ng-container matColumnDef="role">
+            <th mat-header-cell *matHeaderCellDef>System Role</th>
+            <td mat-cell *matCellDef="let u">
+              <span class="role-pill" [class.super]="u.role === 'SuperAdmin'" [class.admin]="u.role === 'Admin'" [class.user]="u.role === 'EndUser'">
+                {{ u.role === 'SuperAdmin' ? '👑 Super Admin' : (u.role === 'Admin' ? '🛡️ Theater Admin' : '👤 Customer') }}
+              </span>
+            </td>
+          </ng-container>
+
+          <!-- Assigned Theaters Column -->
+          <ng-container matColumnDef="theaters">
+            <th mat-header-cell *matHeaderCellDef>Assigned Cinema Branch(es)</th>
+            <td mat-cell *matCellDef="let u">
+              <div class="branches-cell">
+                @if (u.assignedTheaterName) {
+                  <span class="theaters-tag">🏛️ {{ u.assignedTheaterName }}</span>
+                } @else if (u.role === 'Admin') {
+                  <span class="unassigned-tag">⚠️ No Branch Assigned</span>
+                } @else {
+                  <span class="na-tag">—</span>
+                }
+
+                @if (u.role === 'Admin') {
+                  <button class="btn-branch-sm" (click)="openAddBranch(u)" title="Assign another theater branch">
+                    + Add Branch
+                  </button>
+                }
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Joined Date Column -->
+          <ng-container matColumnDef="date">
+            <th mat-header-cell *matHeaderCellDef>Joined</th>
+            <td mat-cell *matCellDef="let u">{{ u.createdAt | date:'mediumDate' }}</td>
+          </ng-container>
+
+          <!-- Actions Column -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Manage Role</th>
+            <td mat-cell *matCellDef="let u">
+              @if (u.role !== 'SuperAdmin') {
+                <div class="action-cell">
+                  <select class="role-select" [value]="u.role" (change)="changeRole(u, $any($event.target).value)">
+                    <option value="EndUser">Customer</option>
+                    <option value="Admin">Theater Admin</option>
+                    <option value="SuperAdmin">Super Admin</option>
+                  </select>
+
+                  <button mat-icon-button color="warn" (click)="deleteUser(u)" title="Delete user">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              } @else {
+                <span class="protected-badge">Protected</span>
+              }
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="cols"></tr>
+          <tr mat-row *matRowDef="let row; columns: cols;"></tr>
+        </table>
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

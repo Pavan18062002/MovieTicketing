@@ -24,12 +24,16 @@ public class CreateScreenDto
 
     [Range(1.0, double.MaxValue, ErrorMessage = "VIP multiplier must be at least 1.0.")]
     public decimal VipMultiplier { get; set; } = 1.6m;
+
+    public int? TheaterId { get; set; }
 }
 
 public class UpdateScreenDto
 {
     [Required, MaxLength(100)]
     public string Name { get; set; } = string.Empty;
+
+    public int? TheaterId { get; set; }
 
     [Range(0, 500, ErrorMessage = "Premium rows must be between 0 and 500.")]
     public int? PremiumRows { get; set; }
@@ -48,6 +52,8 @@ public class ScreenResponseDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
+    public int? TheaterId { get; set; }
+    public string TheaterName { get; set; } = string.Empty;
     public int Capacity { get; set; }
     public int TotalRows { get; set; }
     public int TotalColumns { get; set; }

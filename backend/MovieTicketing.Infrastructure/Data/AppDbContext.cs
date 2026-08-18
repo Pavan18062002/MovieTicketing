@@ -17,6 +17,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     }
 
     public DbSet<Movie> Movies { get; set; }
+    public DbSet<Theater> Theaters { get; set; }
     public DbSet<Screen> Screens { get; set; }
     public DbSet<Seat> Seats { get; set; }
     public DbSet<Show> Shows { get; set; }
@@ -40,6 +41,19 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
         builder.Ignore<IdentityUserToken<string>>();
         builder.Ignore<IdentityRoleClaim<string>>();
 
+        // ── Theater ────────────────────────────────────────────────────────
+        builder.Entity<Theater>(e =>
+        {
+            e.Property(t => t.Name).HasMaxLength(150).IsRequired();
+            e.Property(t => t.Location).HasMaxLength(250).IsRequired();
+            e.Property(t => t.AdminId).IsRequired();
+
+            e.HasOne(t => t.Admin)
+             .WithMany()
+             .HasForeignKey(t => t.AdminId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // ── Movie ──────────────────────────────────────────────────────────
         builder.Entity<Movie>(e =>
         {
@@ -53,6 +67,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
         builder.Entity<Screen>(e =>
         {
             e.Property(s => s.Name).HasMaxLength(100).IsRequired();
+
+            e.HasOne(s => s.Theater)
+             .WithMany(t => t.Screens)
+             .HasForeignKey(s => s.TheaterId)
+             .OnDelete(DeleteBehavior.SetNull);
         });
 
         // ── Seat ───────────────────────────────────────────────────────────
@@ -76,6 +95,11 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
             e.Property(c => c.ItemName).HasMaxLength(100).IsRequired();
             e.Property(c => c.ItemSize).HasMaxLength(20);
             e.Property(c => c.Price).HasColumnType("decimal(18,2)");
+
+            e.HasOne(c => c.Theater)
+             .WithMany()
+             .HasForeignKey(c => c.TheaterId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ── Booking ────────────────────────────────────────────────────────

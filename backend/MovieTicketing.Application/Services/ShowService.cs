@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using MovieTicketing.Application.Common;
 using MovieTicketing.Application.DTOs.Bookings;
 using MovieTicketing.Application.DTOs.Shows;
@@ -21,9 +25,16 @@ public class ShowService : IShowService
         _cache      = cache;
     }
 
-    public async Task<ApiResponse<List<ShowResponseDto>>> GetAllAsync()
+    public async Task<ApiResponse<List<ShowResponseDto>>> GetAllAsync(string? adminId = null, bool isSuperAdmin = false)
     {
         var shows = await _unitOfWork.Shows.GetAllWithDetailsAsync();
+
+        // Scope to admin's theaters if caller is a Theater Admin
+        if (!isSuperAdmin && !string.IsNullOrEmpty(adminId))
+        {
+            shows = shows.Where(s => s.Screen == null || s.Screen.Theater == null || s.Screen.Theater.AdminId == adminId).ToList();
+        }
+
         return ApiResponse<List<ShowResponseDto>>.Ok(shows.Select(MapToDto).ToList());
     }
 
@@ -60,7 +71,7 @@ public class ShowService : IShowService
         return ApiResponse<ShowResponseDto>.Ok(result);
     }
 
-    public async Task<ApiResponse<ShowResponseDto>> CreateAsync(CreateShowDto dto)
+    public async Task<ApiResponse<ShowResponseDto>> CreateAsync(CreateShowDto dto, string? adminId = null)
     {
         var movie = await _unitOfWork.Movies.GetByIdAsync(dto.MovieId);
         if (movie == null)
@@ -69,9 +80,13 @@ public class ShowService : IShowService
         if (!movie.IsActive)
             return ApiResponse<ShowResponseDto>.Fail("Cannot create a show for an inactive movie.");
 
-        var screen = await _unitOfWork.Screens.GetByIdAsync(dto.ScreenId);
+        var screen = await _unitOfWork.Screens.GetWithSeatsByIdAsync(dto.ScreenId);
         if (screen == null)
             return ApiResponse<ShowResponseDto>.Fail("Screen not found.");
+
+        // Ownership check for Theater Admin
+        if (!string.IsNullOrEmpty(adminId) && screen.Theater != null && screen.Theater.AdminId != adminId)
+            return ApiResponse<ShowResponseDto>.Fail("You cannot schedule shows for a screen in a theater you do not own.");
 
         var showEnd = dto.ShowTime.AddMinutes(movie.DurationMinutes + 15);
         bool conflict = await _unitOfWork.Shows.HasOverlappingShowAsync(dto.ScreenId, dto.ShowTime, showEnd);
@@ -100,11 +115,14 @@ public class ShowService : IShowService
         return ApiResponse<ShowResponseDto>.Ok(MapToDto(created!), "Show created successfully.");
     }
 
-    public async Task<ApiResponse<ShowResponseDto>> UpdateAsync(int id, UpdateShowDto dto)
+    public async Task<ApiResponse<ShowResponseDto>> UpdateAsync(int id, UpdateShowDto dto, string? adminId = null, bool isSuperAdmin = false)
     {
-        var show = await _unitOfWork.Shows.GetByIdAsync(id);
+        var show = await _unitOfWork.Shows.GetWithDetailsByIdAsync(id);
         if (show == null)
             return ApiResponse<ShowResponseDto>.Fail("Show not found.");
+
+        if (!isSuperAdmin && !string.IsNullOrEmpty(adminId) && show.Screen?.Theater != null && show.Screen.Theater.AdminId != adminId)
+            return ApiResponse<ShowResponseDto>.Fail("You cannot modify another Admin's show.");
 
         var movie = await _unitOfWork.Movies.GetByIdAsync(show.MovieId);
         var showEnd = dto.ShowTime.AddMinutes((movie?.DurationMinutes ?? 0) + 15);
@@ -127,11 +145,14 @@ public class ShowService : IShowService
         return ApiResponse<ShowResponseDto>.Ok(MapToDto(updated!), "Show updated successfully.");
     }
 
-    public async Task<ApiResponse<bool>> DeleteAsync(int id)
+    public async Task<ApiResponse<bool>> DeleteAsync(int id, string? adminId = null, bool isSuperAdmin = false)
     {
-        var show = await _unitOfWork.Shows.GetByIdAsync(id);
+        var show = await _unitOfWork.Shows.GetWithDetailsByIdAsync(id);
         if (show == null)
             return ApiResponse<bool>.Fail("Show not found.");
+
+        if (!isSuperAdmin && !string.IsNullOrEmpty(adminId) && show.Screen?.Theater != null && show.Screen.Theater.AdminId != adminId)
+            return ApiResponse<bool>.Fail("You cannot delete another Admin's show.");
 
         show.IsActive = false;
         _unitOfWork.Shows.Update(show);
@@ -190,6 +211,9 @@ public class ShowService : IShowService
             ShowId = show.Id,
             MovieTitle = show.Movie?.Title ?? string.Empty,
             ScreenName = screen.Name,
+            TheaterId = screen.TheaterId,
+            TheaterName = screen.Theater?.Name,
+            TheaterLocation = screen.Theater?.Location,
             ShowTime = show.ShowTime,
             BaseTicketPrice = show.BaseTicketPrice,
             TotalRows = screen.TotalRows,

@@ -20,6 +20,9 @@ public class ShowSeatsResponseDto
     public int ShowId { get; set; }
     public string MovieTitle { get; set; } = string.Empty;
     public string ScreenName { get; set; } = string.Empty;
+    public int? TheaterId { get; set; }
+    public string? TheaterName { get; set; }
+    public string? TheaterLocation { get; set; }
     public DateTime ShowTime { get; set; }
     public decimal BaseTicketPrice { get; set; }
     public int TotalRows { get; set; }

@@ -10,7 +10,15 @@ export const authGuard: CanActivateFn = () => {
   return false;
 };
 
-/** Blocks access to Admin-only routes. Redirects regular users to movies. */
+/** Blocks access to SuperAdmin-only routes. */
+export const superAdminGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  if (auth.isSuperAdmin()) return true;
+  inject(Router).navigate(['/admin']);
+  return false;
+};
+
+/** Blocks access to Admin/SuperAdmin routes. Redirects regular users to movies. */
 export const adminGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   if (auth.isAdmin()) return true;
@@ -22,8 +30,13 @@ export const adminGuard: CanActivateFn = () => {
 export const guestGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   if (!auth.isLoggedIn()) return true;
-  // Redirect to the correct home based on role
-  const dest = auth.isAdmin() ? '/admin' : '/movies';
-  inject(Router).navigate([dest]);
+  
+  if (auth.isSuperAdmin()) {
+    inject(Router).navigate(['/super-admin']);
+  } else if (auth.isAdmin()) {
+    inject(Router).navigate(['/admin']);
+  } else {
+    inject(Router).navigate(['/movies']);
+  }
   return false;
 };
