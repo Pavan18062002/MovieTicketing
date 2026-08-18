@@ -5,6 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { interval, Subscription } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
+import { SignalRService } from '../../../core/services/signalr.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { SeatInfo, ShowSeatsResponse, ConcessionItem, BookingConcessionItem, BookingResponse } from '../../../core/models/models';
 
 interface SeatRowGroup {
@@ -21,6 +23,8 @@ interface SeatRowGroup {
 })
 export class SeatSelectionComponent implements OnInit, OnDestroy {
   private api = inject(ApiService);
+  private signalr = inject(SignalRService);
+  private auth = inject(AuthService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
 
@@ -32,6 +36,7 @@ export class SeatSelectionComponent implements OnInit, OnDestroy {
   step = signal<1 | 2 | 3>(1);
 
   selectedSeatIds = signal<Set<number>>(new Set());
+  otherUserLockedSeatIds = signal<Set<number>>(new Set()); // Real-time locks held by other concurrent users
   concessionCart = signal<Map<number, number>>(new Map());
   selectedPayment = signal<string>('upi');
   bookingResult = signal<BookingResponse | null>(null);
@@ -39,9 +44,10 @@ export class SeatSelectionComponent implements OnInit, OnDestroy {
   lockTimer = signal<number | null>(null);
   timerExpired = signal(false);
   private timerSub: Subscription | null = null;
+  private signalRSubs = new Subscription();
   private lockingInProgress = new Set<number>();
 
-  // Converts any 0-indexed row number into standard cinema row letters (0 -> A ... 25 -> Z, 26 -> AA, 27 -> AB ...)
+  // Converts any 0-indexed row number into cinema row letters (0 -> A ... 25 -> Z, 26 -> AA...)
   getRowLabel(rowIndex: number): string {
     let label = '';
     let temp = rowIndex;
@@ -58,7 +64,6 @@ export class SeatSelectionComponent implements OnInit, OnDestroy {
 
     const groups: SeatRowGroup[] = [];
 
-    // Map 0-indexed rows to letters (0 = A, 1 = B ... 25 = Z, 26 = AA...)
     for (let r = 0; r < data.totalRows; r++) {
       const rowSeats = data.seats.filter(s => s.row === r).sort((a, b) => a.column - b.column);
       if (rowSeats.length === 0) continue;
@@ -103,19 +108,80 @@ export class SeatSelectionComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const showId = Number(this.route.snapshot.paramMap.get('showId'));
+    
+    // 1. Load initial seat grid
     this.api.getShowSeats(showId).subscribe(res => {
       this.showData.set(res.data);
       this.loading.set(false);
     });
+
+    // 2. Connect to SignalR group for live seat synchronization
+    this.signalr.joinShowGroup(showId);
+
+    // Listen for live seat lock events from other clients
+    this.signalRSubs.add(
+      this.signalr.seatsLocked$.subscribe(event => {
+        if (event.showId === showId) {
+          const myUserId = this.auth.getUserId();
+          if (event.lockedByUserId && myUserId && event.lockedByUserId === myUserId) {
+            return;
+          }
+          const locked = new Set(this.otherUserLockedSeatIds());
+          event.seatIds.forEach(id => {
+            if (!this.selectedSeatIds().has(id)) {
+              locked.add(id);
+            }
+          });
+          this.otherUserLockedSeatIds.set(locked);
+        }
+      })
+    );
+
+    // Listen for live seat unlock events
+    this.signalRSubs.add(
+      this.signalr.seatsUnlocked$.subscribe(event => {
+        if (event.showId === showId) {
+          const locked = new Set(this.otherUserLockedSeatIds());
+          event.seatIds.forEach(id => locked.delete(id));
+          this.otherUserLockedSeatIds.set(locked);
+        }
+      })
+    );
+
+    // Listen for permanently booked seats
+    this.signalRSubs.add(
+      this.signalr.seatsBooked$.subscribe(event => {
+        if (event.showId === showId) {
+          const data = this.showData();
+          if (data) {
+            const updatedSeats = data.seats.map(s =>
+              event.seatIds.includes(s.id) ? { ...s, isBooked: true } : s
+            );
+            this.showData.set({ ...data, seats: updatedSeats });
+          }
+
+          const locked = new Set(this.otherUserLockedSeatIds());
+          event.seatIds.forEach(id => locked.delete(id));
+          this.otherUserLockedSeatIds.set(locked);
+        }
+      })
+    );
   }
 
   ngOnDestroy(): void {
+    const showId = this.showData()?.showId;
+    if (showId) {
+      this.signalr.leaveShowGroup(showId);
+    }
+    this.signalRSubs.unsubscribe();
     this.releaseAllLocks();
     this.stopTimer();
   }
 
   toggleSeat(seat: SeatInfo): void {
-    if (seat.isBooked || this.lockingInProgress.has(seat.id)) return;
+    if (seat.isBooked || this.otherUserLockedSeatIds().has(seat.id) || this.lockingInProgress.has(seat.id)) {
+      return;
+    }
 
     const current = new Set(this.selectedSeatIds());
 
@@ -163,9 +229,10 @@ export class SeatSelectionComponent implements OnInit, OnDestroy {
   }
 
   seatTypeClass(seat: SeatInfo): string {
-    if (seat.isBooked) return 'booked';
-    if (this.lockingInProgress.has(seat.id)) return 'locking';
     if (this.isSeatSelected(seat.id)) return 'selected';
+    if (seat.isBooked) return 'booked';
+    if (this.otherUserLockedSeatIds().has(seat.id)) return 'locked-other';
+    if (this.lockingInProgress.has(seat.id)) return 'locking';
     if (seat.seatType === 3) return 'vip';
     if (seat.seatType === 2) return 'premium';
     return 'standard';

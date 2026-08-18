@@ -9,10 +9,12 @@ namespace MovieTicketing.Application.Services;
 public class ConcessionService : IConcessionService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IRealTimeNotificationService _notifier;
 
-    public ConcessionService(IUnitOfWork unitOfWork)
+    public ConcessionService(IUnitOfWork unitOfWork, IRealTimeNotificationService notifier)
     {
         _unitOfWork = unitOfWork;
+        _notifier = notifier;
     }
 
     public async Task<ApiResponse<List<ConcessionResponseDto>>> GetAllAsync()
@@ -98,6 +100,11 @@ public class ConcessionService : IConcessionService
         _unitOfWork.Concessions.Update(item);
         await _unitOfWork.SaveChangesAsync();
 
+        if (item.StockCount <= 5 || (item.BaseStockCount > 0 && item.StockCount <= (int)Math.Ceiling(item.BaseStockCount * 0.20)))
+        {
+            await _notifier.SendLowStockAlertAsync(item.Id, item.ItemName, item.ItemSize, item.StockCount, item.BaseStockCount);
+        }
+
         return ApiResponse<ConcessionResponseDto>.Ok(MapToDto(item), "Stock updated successfully.");
     }
 
@@ -115,9 +122,11 @@ public class ConcessionService : IConcessionService
 
     private static ConcessionResponseDto MapToDto(ConcessionItem item)
     {
-        // Low-stock: when current stock falls to 10% or below of the baseline
-        bool isLowStock = item.BaseStockCount > 0 &&
-                          item.StockCount <= (int)Math.Ceiling(item.BaseStockCount * 0.1);
+        // Low-stock: when current stock is <= 5 or falls to 20% or below of baseline
+        bool isLowStock = item.StockCount > 0 && (
+            item.StockCount <= 5 || 
+            (item.BaseStockCount > 0 && item.StockCount <= (int)Math.Ceiling(item.BaseStockCount * 0.20))
+        );
 
         return new ConcessionResponseDto
         {

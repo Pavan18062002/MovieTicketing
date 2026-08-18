@@ -44,6 +44,17 @@
           <mat-icon class="m-icon">event_seat</mat-icon>
           <span>{{ booking()!.seats.length }} Seats: {{ seatNumbers() }}</span>
         </div>
+
+        @if (booking()!.concessions && booking()!.concessions.length > 0) {
+        <div class="meta-item">
+          <mat-icon class="m-icon">fastfood</mat-icon>
+          <span>
+            @for (c of booking()!.concessions; track c.itemName; let last = $last) {
+              {{ c.itemName }} (x{{ c.quantity }}){{ !last ? ', ' : '' }}
+            }
+          </span>
+        </div>
+        }
       </div>
     </div>
 

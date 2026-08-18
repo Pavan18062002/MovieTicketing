@@ -11,13 +11,21 @@ public class BookingService : IBookingService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IRedisCacheService _cache;
+    private readonly IRealTimeNotificationService _notifier;
+    private readonly ITicketProcessingQueue _ticketQueue;
 
     private static readonly TimeSpan LockTtl = TimeSpan.FromMinutes(5);
 
-    public BookingService(IUnitOfWork unitOfWork, IRedisCacheService cache)
+    public BookingService(
+        IUnitOfWork unitOfWork,
+        IRedisCacheService cache,
+        IRealTimeNotificationService notifier,
+        ITicketProcessingQueue ticketQueue)
     {
         _unitOfWork = unitOfWork;
         _cache = cache;
+        _notifier = notifier;
+        _ticketQueue = ticketQueue;
     }
 
     public async Task<ApiResponse<LockSeatsResponseDto>> LockSeatsAsync(string userId, LockSeatsRequestDto dto)
@@ -39,6 +47,12 @@ public class BookingService : IBookingService
             locked.Add(seatId);
         }
 
+        // Broadcast seat locked status to all clients watching this show
+        if (locked.Count > 0)
+        {
+            await _notifier.SendSeatLockedAsync(dto.ShowId, locked, userId);
+        }
+
         return ApiResponse<LockSeatsResponseDto>.Ok(new LockSeatsResponseDto
         {
             Success = true,
@@ -56,6 +70,10 @@ public class BookingService : IBookingService
             await _cache.ReleaseSeatLockAsync(dto.ShowId, seatId);
         }
 
+        if (dto.SeatIds.Count > 0)
+        {
+            await _notifier.SendSeatUnlockedAsync(dto.ShowId, dto.SeatIds);
+        }
 
         return ApiResponse<bool>.Ok(true, "Seats unlocked.");
     }
@@ -186,12 +204,57 @@ public class BookingService : IBookingService
                 });
             }
 
+            foreach (var orderItem in dto.ConcessionItems)
+            {
+                var item = concessionItems.First(c => c.Id == orderItem.ConcessionItemId);
+                booking.BookingConcessions.Add(new BookingConcession
+                {
+                    BookingId = booking.Id,
+                    ConcessionItemId = item.Id,
+                    ItemName = item.ItemName,
+                    ItemSize = item.ItemSize,
+                    Quantity = orderItem.Quantity,
+                    UnitPrice = item.Price,
+                    Subtotal = item.Price * orderItem.Quantity
+                });
+            }
+
             await _unitOfWork.SaveChangesAsync();
             await transaction.CommitAsync();
 
             // locks released after commit — seats now permanently booked in DB
             foreach (var seatId in dto.SeatIds)
                 await _cache.ReleaseSeatLockAsync(dto.ShowId, seatId);
+
+            // Broadcast real-time seat booked event to all users viewing this show
+            await _notifier.SendSeatBookedAsync(dto.ShowId, dto.SeatIds);
+
+            // Check for low-stock concessions and broadcast alerts to AdminHub
+            foreach (var orderItem in dto.ConcessionItems)
+            {
+                var item = concessionItems.First(c => c.Id == orderItem.ConcessionItemId);
+                if (item.BaseStockCount > 0 && item.StockCount <= (int)Math.Ceiling(item.BaseStockCount * 0.10))
+                {
+                    await _notifier.SendLowStockAlertAsync(item.Id, item.ItemName, item.ItemSize, item.StockCount, item.BaseStockCount);
+                }
+            }
+
+            // Enqueue non-blocking background task for simulated PDF generation and email delivery
+            var seatNumbersList = bookingSeatEntities.Select(b => b.SeatNumber).ToList();
+            await _ticketQueue.QueueTicketProcessingAsync(new TicketProcessingMessage
+            {
+                BookingId = booking.Id,
+                BookingReference = booking.BookingReference,
+                UserId = userId,
+                UserEmail = "customer@cinemate.com",
+                UserFullName = "Valued Customer",
+                MovieTitle = show.Movie?.Title ?? "Movie Screening",
+                ScreenName = show.Screen?.Name ?? "Main Screen",
+                ShowTime = show.ShowTime,
+                SeatNumbers = seatNumbersList,
+                TotalAmount = booking.TotalAmount,
+                BookedAt = booking.BookedAt
+            });
 
             var response = BuildBookingResponse(booking, show, seatLookup, dto.ConcessionItems, concessionItems, ticketsTotal, concessionsTotal);
             return ApiResponse<BookingResponseDto>.Ok(response, "Booking confirmed successfully!");
@@ -302,6 +365,19 @@ public class BookingService : IBookingService
             Price = bs.Price
         }).ToList();
 
+        var concessions = booking.BookingConcessions.Select(bc => new BookingConcessionResponseDto
+        {
+            ConcessionItemId = bc.ConcessionItemId,
+            ItemName = bc.ItemName,
+            ItemSize = bc.ItemSize,
+            Quantity = bc.Quantity,
+            UnitPrice = bc.UnitPrice,
+            Subtotal = bc.Subtotal
+        }).ToList();
+
+        decimal ticketsTotal = seats.Sum(s => s.Price);
+        decimal concessionsTotal = concessions.Sum(c => c.Subtotal);
+
         return new BookingResponseDto
         {
             Id = booking.Id,
@@ -312,9 +388,9 @@ public class BookingService : IBookingService
             ScreenName = booking.Show?.Screen?.Name ?? string.Empty,
             ShowTime = booking.Show?.ShowTime ?? default,
             Seats = seats,
-            Concessions = new List<BookingConcessionResponseDto>(),
-            TicketsTotal = seats.Sum(s => s.Price),
-            ConcessionsTotal = 0,
+            Concessions = concessions,
+            TicketsTotal = ticketsTotal,
+            ConcessionsTotal = concessionsTotal,
             TotalAmount = booking.TotalAmount,
             Status = booking.Status,
             StatusName = booking.Status.ToString(),

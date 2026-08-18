@@ -13,5 +13,7 @@ public interface IAppDbContext
     DbSet<Show> Shows { get; }
     DbSet<Booking> Bookings { get; }
     DbSet<BookingSeat> BookingSeats { get; }
+    DbSet<ConcessionItem> ConcessionItems { get; }
+    DbSet<BookingConcession> BookingConcessions { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

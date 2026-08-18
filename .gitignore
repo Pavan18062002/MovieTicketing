@@ -43,3 +43,6 @@ package-lock.json
 # Zip archives and bundles
 *.zip
 *.bundle
+
+# Generated tickets
+GeneratedTickets/

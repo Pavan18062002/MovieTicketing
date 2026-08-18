@@ -137,5 +137,3 @@ export class ApiService {
     return this.http.get<ApiResponse<BookingResponse>>(`${this.api}/booking/${id}`);
   }
 }
-  }
-}

@@ -8,6 +8,7 @@ using MovieTicketing.Application.Services;
 using MovieTicketing.Application.Interfaces;
 using MovieTicketing.Infrastructure.Services;
 using MovieTicketing.API.Swagger;
+using MovieTicketing.Infrastructure.Hubs;
 using MovieTicketing.Domain.Entities;
 using StackExchange.Redis;
 using System.Text;
@@ -56,7 +57,6 @@ else
 
 builder.Services.AddSingleton<IRedisCacheService, RedisCacheService>();
 
-
 // Configure ASP.NET Core Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
@@ -85,7 +85,30 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
     };
+
+    // Support JWT tokens over SignalR WebSocket query string
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
+
+// Configure SignalR real-time messaging
+builder.Services.AddSignalR();
+builder.Services.AddScoped<IRealTimeNotificationService, RealTimeNotificationService>();
+
+// Configure Asynchronous Background Processing
+builder.Services.AddSingleton<ITicketProcessingQueue, MovieTicketing.Infrastructure.Services.TicketProcessingQueue>();
+builder.Services.AddHostedService<MovieTicketing.Infrastructure.BackgroundServices.TicketProcessingBackgroundService>();
 
 builder.Services.AddScoped<MovieTicketing.Application.Interfaces.Repositories.IUnitOfWork, MovieTicketing.Infrastructure.Repositories.UnitOfWork>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -140,7 +163,8 @@ builder.Services.AddCors(options =>
         {
             b.WithOrigins("http://localhost:4200")
              .AllowAnyHeader()
-             .AllowAnyMethod();
+             .AllowAnyMethod()
+             .AllowCredentials();
         });
 });
 
@@ -174,5 +198,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<ShowHub>("/hubs/shows");
+app.MapHub<AdminHub>("/hubs/admin");
 
 app.Run();

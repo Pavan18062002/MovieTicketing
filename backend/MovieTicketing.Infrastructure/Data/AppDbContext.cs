@@ -23,6 +23,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
     public DbSet<ConcessionItem> ConcessionItems { get; set; }
     public DbSet<Booking> Bookings { get; set; }
     public DbSet<BookingSeat> BookingSeats { get; set; }
+    public DbSet<BookingConcession> BookingConcessions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -93,6 +94,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole, str
             // PRIMARY double-booking guard at DB level.
             // A seat can only be booked once per show.
             e.HasIndex(bs => new { bs.ShowId, bs.SeatId }).IsUnique();
+        });
+
+        // ── BookingConcession ──────────────────────────────────────────────
+        builder.Entity<BookingConcession>(e =>
+        {
+            e.Property(bc => bc.ItemName).HasMaxLength(100).IsRequired();
+            e.Property(bc => bc.ItemSize).HasMaxLength(20);
+            e.Property(bc => bc.UnitPrice).HasColumnType("decimal(18,2)");
+            e.Property(bc => bc.Subtotal).HasColumnType("decimal(18,2)");
         });
     }
 }

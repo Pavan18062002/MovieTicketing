@@ -1,20 +1,34 @@
 <div class="admin-shell">
-      <aside class="sidebar">
-        <div class="sidebar-brand">
-          <mat-icon>admin_panel_settings</mat-icon>
-          <span>Admin Panel</span>
-        </div>
-        <nav>
-          @for (item of navItems; track item.route) {
-            <a [routerLink]="item.route" routerLinkActive="active"
-               [routerLinkActiveOptions]="{exact: false}" class="nav-item">
-              <mat-icon>{{ item.icon }}</mat-icon>
-              <span>{{ item.label }}</span>
-            </a>
-          }
-        </nav>
-      </aside>
-      <main class="content">
-        <router-outlet />
-      </main>
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <mat-icon>admin_panel_settings</mat-icon>
+      <span>Admin Panel</span>
     </div>
+    <nav>
+      @for (item of navItems; track item.route) {
+        <a [routerLink]="item.route" routerLinkActive="active"
+           [routerLinkActiveOptions]="{exact: false}" class="nav-item">
+          <mat-icon>{{ item.icon }}</mat-icon>
+          <span>{{ item.label }}</span>
+          @if (item.label === 'Concessions' && recentAlerts().length > 0) {
+            <span class="alert-badge">{{ recentAlerts().length }}</span>
+          }
+        </a>
+      }
+    </nav>
+  </aside>
+  <main class="content">
+    @if (recentAlerts().length > 0) {
+      <div class="low-stock-alert-bar">
+        <mat-icon class="warn-icon">warning</mat-icon>
+        <div class="alert-text">
+          <strong>Low Stock Alert:</strong>
+          <span>{{ recentAlerts()[0].itemName }} ({{ recentAlerts()[0].itemSize }}) has only {{ recentAlerts()[0].currentStock }} units remaining!</span>
+        </div>
+        <button type="button" class="btn-restock" (click)="onRestockClick()">Restock Now</button>
+        <button class="btn-close-alert" (click)="dismissAlert(0)"><mat-icon>close</mat-icon></button>
+      </div>
+    }
+    <router-outlet />
+  </main>
+</div>

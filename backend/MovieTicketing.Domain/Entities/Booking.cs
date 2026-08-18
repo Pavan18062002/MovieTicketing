@@ -18,4 +18,5 @@ public class Booking
     public virtual ApplicationUser User { get; set; } = null!;
     public virtual Show Show { get; set; } = null!;
     public virtual ICollection<BookingSeat> BookingSeats { get; set; } = new List<BookingSeat>();
+    public virtual ICollection<BookingConcession> BookingConcessions { get; set; } = new List<BookingConcession>();
 }

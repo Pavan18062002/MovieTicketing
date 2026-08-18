@@ -40,6 +40,23 @@ export class AuthService {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
+  getUserId(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return (
+        payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ||
+        payload.nameid ||
+        payload.sub ||
+        payload.id ||
+        null
+      );
+    } catch {
+      return null;
+    }
+  }
+
   private persist(data: AuthResponse): void {
     localStorage.setItem(this.TOKEN_KEY, data.token);
     localStorage.setItem(this.USER_KEY, JSON.stringify(data));

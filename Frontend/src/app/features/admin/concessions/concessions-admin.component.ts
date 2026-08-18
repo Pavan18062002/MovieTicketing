@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, ViewChild } from '@angular/core';
 import { FormBuilder, Validators, ReactiveFormsModule, FormGroupDirective } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,7 +10,9 @@ import { MatCardModule } from '@angular/material/card';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { Subscription } from 'rxjs';
 import { ApiService } from '../../../core/services/api.service';
+import { SignalRService } from '../../../core/services/signalr.service';
 import { ConcessionItem } from '../../../core/models/models';
 import { StockDialogComponent } from './stock-dialog.component';
 
@@ -25,11 +27,13 @@ import { StockDialogComponent } from './stock-dialog.component';
   templateUrl: './concessions-admin.component.html',
   styleUrl: './concessions-admin.component.css'
 })
-export class ConcessionsAdminComponent implements OnInit {
-  private api    = inject(ApiService);
-  private fb     = inject(FormBuilder);
-  private snack  = inject(MatSnackBar);
-  private dialog = inject(MatDialog);
+export class ConcessionsAdminComponent implements OnInit, OnDestroy {
+  private api     = inject(ApiService);
+  private signalr = inject(SignalRService);
+  private fb      = inject(FormBuilder);
+  private snack   = inject(MatSnackBar);
+  private dialog  = inject(MatDialog);
+  private sub = new Subscription();
 
   @ViewChild(FormGroupDirective) formDirective!: FormGroupDirective;
 
@@ -47,7 +51,26 @@ export class ConcessionsAdminComponent implements OnInit {
     stockCount: [0, [Validators.required, Validators.min(0)]]
   });
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+
+    // Listen for live stock decrements from checkouts
+    this.sub.add(
+      this.signalr.lowStockAlert$.subscribe(alert => {
+        this.items.update(list =>
+          list.map(item =>
+            item.id === alert.concessionItemId
+              ? { ...item, stockCount: alert.currentStock, isLowStock: true }
+              : item
+          )
+        );
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.sub.unsubscribe();
+  }
 
   load(): void {
     this.loading.set(true);
