@@ -18,6 +18,7 @@ public class ShowRepository : GenericRepository<Show>, IShowRepository
         return await _dbSet
             .AsNoTracking()
             .Include(s => s.Screen)
+                .ThenInclude(sc => sc!.Theater)
             .Include(s => s.BookingSeats.Where(bs => bs.Booking.Status != BookingStatus.Cancelled))
             .Where(s => s.MovieId == movieId && s.IsActive && s.ShowTime > now)
             .OrderBy(s => s.ShowTime)
@@ -30,7 +31,9 @@ public class ShowRepository : GenericRepository<Show>, IShowRepository
             .AsNoTracking()
             .Include(s => s.Movie)
             .Include(s => s.Screen)
-                .ThenInclude(sc => sc.Seats)
+                .ThenInclude(sc => sc!.Theater)
+            .Include(s => s.Screen)
+                .ThenInclude(sc => sc!.Seats)
             .FirstOrDefaultAsync(s => s.Id == showId);
     }
 

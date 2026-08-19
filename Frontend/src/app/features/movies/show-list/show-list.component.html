@@ -7,9 +7,14 @@
     
     <!-- Top Action Bar -->
     <div class="top-nav-bar">
-      <a routerLink="/movies" class="back-link-btn">
+      <a routerLink="/movies" class="back-link-btn" title="Back to Movies">
         <mat-icon>arrow_back</mat-icon>
       </a>
+      <div class="header-breadcrumbs">
+        <span class="crumb-link" routerLink="/movies">Movies</span>
+        <mat-icon class="crumb-sep">chevron_right</mat-icon>
+        <span class="crumb-current">{{ movieTitle() }}</span>
+      </div>
     </div>
 
     <div class="details-grid">
@@ -39,7 +44,7 @@
           <div class="meta-stats">
             <span><mat-icon class="stat-icon">schedule</mat-icon> {{ durationMinutes() }}m</span>
             <span>•</span>
-            <span>English</span>
+            <span>English / Hindi</span>
             <span>•</span>
             <span class="cert-badge">UA</span>
           </div>
@@ -51,12 +56,15 @@
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: Date & Showtime Selection -->
+      <!-- RIGHT COLUMN: Date & Theater Grouped Showtimes -->
       <div class="booking-selection-panel">
         
-        <!-- 1. Date Selector Tabs (Next 7 Days) -->
+        <!-- 1. Date Selector Tabs -->
         <div class="selection-group">
-          <label class="group-title">Select Date</label>
+          <div class="group-header-row">
+            <label class="group-title">Select Date</label>
+            <span class="date-hint">Choose your preferred screening day</span>
+          </div>
           <div class="date-tabs-row">
             @for (tab of dateTabs(); track tab.dateStr; let idx = $index) {
               <div class="date-tab-card"
@@ -69,62 +77,85 @@
           </div>
         </div>
 
-        <!-- 2. Showtime Options for Selected Date -->
+        <!-- 2. Showtimes Grouped by Theater Venue -->
         <div class="selection-group">
-          <label class="group-title">Select Showtime</label>
-          
-          @if (filteredShows().length === 0) {
-            <!-- Empty state when no showtimes are scheduled on chosen date -->
+          <div class="group-header-row">
+            <label class="group-title">Cinema Theaters & Showtimes</label>
+            <span class="date-hint">{{ theaterGroups().length }} Cinema Venue(s) Showing</span>
+          </div>
+
+          @if (theaterGroups().length === 0) {
             <div class="no-shows-alert">
               <mat-icon>event_busy</mat-icon>
-              <span>No showtimes scheduled for this date.</span>
+              <div>
+                <strong>No showtimes scheduled for this date</strong>
+                <p>Please select another date from the tabs above to view available cinema screenings.</p>
+              </div>
             </div>
           } @else {
-            <div class="showtimes-grid">
-              @for (show of filteredShows(); track show.id) {
-                <button class="showtime-pill"
-                        [class.active]="selectedShowId() === show.id"
-                        [class.sold-out]="show.availableSeats === 0"
-                        [disabled]="show.availableSeats === 0"
-                        (click)="selectShow(show.id)">
-                  <span class="time-text">{{ show.showTime | date:'hh:mm a' }}</span>
-                  <span class="format-text">2D</span>
-                  @if (show.availableSeats === 0) {
-                    <span class="seat-badge-warn">Sold Out</span>
-                  } @else if (show.availableSeats <= 10) {
-                    <span class="seat-badge-warn">⚡ Only {{ show.availableSeats }} left</span>
-                  } @else {
-                    <span class="seat-count-sub">{{ show.availableSeats }}/{{ show.totalSeats }} seats</span>
-                  }
-                </button>
+            <div class="theaters-list">
+              @for (group of theaterGroups(); track group.theaterId) {
+                <div class="theater-card-block">
+                  
+                  <!-- Theater Venue Header -->
+                  <div class="theater-card-header">
+                    <div class="theater-name-col">
+                      <div class="theater-name-row">
+                        <h3 class="venue-name">{{ group.theaterName }}</h3>
+                        @if (group.theaterLocation) {
+                          <span class="location-badge">
+                            <mat-icon class="loc-icon">place</mat-icon> {{ group.theaterLocation }}
+                          </span>
+                        }
+                      </div>
+                      <div class="perks-row">
+                        <span class="perk-item"><mat-icon class="perk-icon">fastfood</mat-icon> Food & Beverages</span>
+                        <span class="perk-item"><mat-icon class="perk-icon">confirmation_number</mat-icon> M-Ticket</span>
+                        <span class="perk-item"><mat-icon class="perk-icon">verified</mat-icon> Cancellation Available</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Showtimes Grid for this Specific Theater -->
+                  <div class="theater-shows-grid">
+                    @for (show of group.shows; track show.id) {
+                      <div class="showtime-card"
+                           [class.sold-out]="show.availableSeats === 0"
+                           (click)="proceedToSeats(show.id)">
+                        
+                        <div class="show-time-line">
+                          <span class="show-time-val">{{ show.showTime | date:'hh:mm a' }}</span>
+                          <span class="show-format-badge">2D</span>
+                        </div>
+
+                        <div class="screen-name-tag">{{ show.screenName }}</div>
+
+                        <div class="show-pricing-row">
+                          <span class="ticket-price">₹{{ show.baseTicketPrice | number:'1.0-0' }}</span>
+                          
+                          @if (show.availableSeats === 0) {
+                            <span class="seat-badge sold">Sold Out</span>
+                          } @else if (show.availableSeats <= 15) {
+                            <span class="seat-badge fast">⚡ {{ show.availableSeats }} left</span>
+                          } @else {
+                            <span class="seat-badge available">{{ show.availableSeats }} seats</span>
+                          }
+                        </div>
+
+                        <button class="btn-book-quick"
+                                [disabled]="show.availableSeats === 0"
+                                (click)="$event.stopPropagation(); proceedToSeats(show.id)">
+                          Select Seats
+                        </button>
+                      </div>
+                    }
+                  </div>
+
+                </div>
               }
             </div>
           }
         </div>
-
-        <!-- 3. Screen Info & Seat Booking Button -->
-        @if (selectedShow()) {
-          <div class="theatre-card">
-            <div class="theatre-header">
-              <div>
-                <h4 class="theatre-name">CineMate Cinemas • {{ selectedShow()!.screenName }}</h4>
-                <p class="screen-sub">Showtime {{ selectedShow()!.showTime | date:'hh:mm a' }} • Base Ticket Price ₹{{ selectedShow()!.baseTicketPrice }}</p>
-              </div>
-            </div>
-
-            <div class="policies-row">
-              <span class="policy-chip highlight"><mat-icon class="p-icon">event_seat</mat-icon> {{ selectedShow()!.availableSeats }} / {{ selectedShow()!.totalSeats }} Seats Available</span>
-              <span class="policy-chip"><mat-icon class="p-icon">event_available</mat-icon> Cancellation Available</span>
-              <span class="policy-chip"><mat-icon class="p-icon">fastfood</mat-icon> Food & Beverages</span>
-            </div>
-
-            <button class="btn-primary select-seats-btn"
-                    [disabled]="selectedShow()!.availableSeats === 0"
-                    (click)="proceedToSeats()">
-              Select Seats
-            </button>
-          </div>
-        }
 
       </div>
 

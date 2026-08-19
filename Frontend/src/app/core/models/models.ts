@@ -156,6 +156,9 @@ export interface Show {
   durationMinutes: number;
   screenId: number;
   screenName: string;
+  theaterId?: number;
+  theaterName?: string;
+  theaterLocation?: string;
   showTime: string;
   baseTicketPrice: number;
   isActive: boolean;

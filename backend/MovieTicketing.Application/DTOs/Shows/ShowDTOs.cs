@@ -39,6 +39,9 @@ public class ShowResponseDto
     public int DurationMinutes { get; set; }
     public int ScreenId { get; set; }
     public string ScreenName { get; set; } = string.Empty;
+    public int? TheaterId { get; set; }
+    public string TheaterName { get; set; } = string.Empty;
+    public string TheaterLocation { get; set; } = string.Empty;
     public DateTime ShowTime { get; set; }
     public decimal BaseTicketPrice { get; set; }
     public bool IsActive { get; set; }

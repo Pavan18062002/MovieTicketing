@@ -1,24 +1,30 @@
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { ActivatedRoute, RouterLink, Router } from '@angular/router';
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../../core/services/api.service';
 import { Show, Movie } from '../../../core/models/models';
 import { forkJoin, catchError, of } from 'rxjs';
 
-// Data model for date tabs (Today, Tomorrow, etc.)
-interface DateTab {
+export interface DateTab {
   dayName: string;
   dateStr: string;
   fullDate: Date;
   isToday: boolean;
 }
 
+export interface TheaterShowGroup {
+  theaterId: number;
+  theaterName: string;
+  theaterLocation: string;
+  shows: Show[];
+}
+
 @Component({
   selector: 'app-show-list',
   standalone: true,
-  imports: [RouterLink, DatePipe, MatIconModule, MatProgressSpinnerModule],
+  imports: [RouterLink, DatePipe, DecimalPipe, MatIconModule, MatProgressSpinnerModule],
   templateUrl: './show-list.component.html',
   styleUrl: './show-list.component.css'
 })
@@ -36,14 +42,13 @@ export class ShowListComponent implements OnInit {
   selectedShowId  = signal<number | null>(null);
   posterSrc       = signal('https://placehold.co/300x450/131326/8b5cf6?text=Loading...');
 
-  // Dynamically generates date tabs ONLY for dates that have available shows
+  // Dynamically generates date tabs ONLY for dates that have scheduled shows
   dateTabs = computed<DateTab[]>(() => {
     const allShows = this.shows();
     if (allShows.length === 0) return [];
 
     const todayStr = new Date().toDateString();
 
-    // Extract unique dates from active shows
     const uniqueDatesMap = new Map<string, Date>();
     allShows.forEach(s => {
       const d = new Date(s.showTime);
@@ -53,7 +58,6 @@ export class ShowListComponent implements OnInit {
       }
     });
 
-    // Sort unique dates chronologically
     const sortedDates = Array.from(uniqueDatesMap.values()).sort((a, b) => a.getTime() - b.getTime());
 
     return sortedDates.map(d => {
@@ -73,17 +77,16 @@ export class ShowListComponent implements OnInit {
   description     = computed(() => this.movie()?.description ?? this.shows()[0]?.description ?? '');
   durationMinutes = computed(() => this.movie()?.durationMinutes ?? this.shows()[0]?.durationMinutes ?? 120);
 
-  // Splits comma-separated genre string into individual tag chips
   genreTags = computed(() => {
     const g = this.genre();
     return g ? g.split(',').map(s => s.trim()) : ['2D', 'Action'];
   });
 
-  // Strictly filters showtimes to match the selected date tab
+  // Filter shows strictly matching the active date tab
   filteredShows = computed(() => {
     const all = this.shows();
     if (all.length === 0) return [];
-    
+
     const selectedTab = this.dateTabs()[this.selectedDateIdx()];
     if (!selectedTab) return [];
 
@@ -93,21 +96,42 @@ export class ShowListComponent implements OnInit {
     });
   });
 
-  // Retrieves the currently selected show object
-  selectedShow = computed(() => {
-    const id = this.selectedShowId();
-    if (id) {
-      const found = this.shows().find(s => s.id === id);
-      if (found) return found;
-    }
-    return this.filteredShows()[0] ?? null;
+  // Groups shows by Cinema / Theater Branch (Industry Standard BookMyShow pattern)
+  theaterGroups = computed<TheaterShowGroup[]>(() => {
+    const shows = this.filteredShows();
+    if (shows.length === 0) return [];
+
+    const map = new Map<number, TheaterShowGroup>();
+
+    shows.forEach(s => {
+      const tid = s.theaterId ?? 0;
+      const tname = s.theaterName || 'Main Cinema';
+      const tloc = s.theaterLocation || '';
+
+      if (!map.has(tid)) {
+        map.set(tid, {
+          theaterId: tid,
+          theaterName: tname,
+          theaterLocation: tloc,
+          shows: []
+        });
+      }
+
+      map.get(tid)!.shows.push(s);
+    });
+
+    // Chronologically sort shows within each theater group
+    map.forEach(g => {
+      g.shows.sort((a, b) => new Date(a.showTime).getTime() - new Date(b.showTime).getTime());
+    });
+
+    return Array.from(map.values());
   });
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.movieId.set(id);
-    
-    // Fetch movie details and scheduled shows concurrently
+
     forkJoin({
       movieRes: this.api.getMovie(id).pipe(catchError(() => of(null))),
       showsRes: this.api.getShowsByMovie(id).pipe(catchError(() => of(null)))
@@ -123,7 +147,6 @@ export class ShowListComponent implements OnInit {
         this.shows.set(showList);
 
         if (showList.length > 0) {
-          // Auto-select date tab corresponding to the earliest scheduled show
           const firstShowDate = new Date(showList[0].showTime);
           const tabIdx = this.dateTabs().findIndex(
             t => t.fullDate.toDateString() === firstShowDate.toDateString()
@@ -138,7 +161,6 @@ export class ShowListComponent implements OnInit {
     });
   }
 
-  // Switches selected date tab
   selectDate(index: number): void {
     this.selectedDateIdx.set(index);
     const available = this.filteredShows();
@@ -149,20 +171,11 @@ export class ShowListComponent implements OnInit {
     }
   }
 
-  // Selects a showtime pill
-  selectShow(showId: number): void {
+  proceedToSeats(showId: number): void {
     this.selectedShowId.set(showId);
+    this.router.navigate(['/movies', this.movieId(), 'shows', showId, 'seats']);
   }
 
-  // Navigates to interactive seat selection for chosen show
-  proceedToSeats(): void {
-    const show = this.selectedShow();
-    if (show) {
-      this.router.navigate(['/movies', this.movieId(), 'shows', show.id, 'seats']);
-    }
-  }
-
-  // Fallback handler if poster image fails to load
   onImgError(event: Event): void {
     (event.target as HTMLImageElement).src =
       'https://placehold.co/300x450/131326/8b5cf6?text=No+Poster';
